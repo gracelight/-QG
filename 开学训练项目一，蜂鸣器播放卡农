@@ -1,0 +1,107 @@
+#include <REGX51.H>
+#include "Timer0.h"
+#include "Delay.h"
+
+typedef unsigned char  u8;  //Ëõ¶ÌÃüÃû£¬u8=unsigned char
+typedef unsigned int   u16;
+void Timer0_Init(void);
+void Delay_ms(unsigned int ms);
+void Play_Note(unsigned int note);
+void Play_Canon(void);
+
+sbit BEEP = P2^5;    // ·äÃùÆ÷Òý½Å
+
+u16 code tone_table[] = {
+  64021,64103,64175,64207,64261,64311,64353,  // µÍÒô1~7   ÖØ×°ÔØÖµ=65536-°ëÖÜÆÚ¼ÆÊýÖµ
+  64383,64413,64437,64453,64477,64497,64513,  // ÖÐÒô1~7
+  64527,64540,64550,64556,64566,64574,64581   // ¸ßÒô1-7
+};
+u16 Current_Freq; 
+
+
+//¶¨Ê±Æ÷0ÖÐ¶Ï£¬·­×ª·äÃùÆ÷·¢Éù
+void Timer0_Routine() interrupt 1
+{
+  TH0=Current_Freq/256; 
+  TL0=Current_Freq%256;
+	BEEP=!BEEP;
+}
+
+
+void Play_Note(u16 note)
+{
+  u8 pitch,len,num;    //¶¨Òå
+  u16 Current_Freq;
+  
+  if(note==0)
+	{
+		TR0=0;
+		Delay_ms(400);
+		return;
+	}                          //Í£Ö¹·û
+  pitch=note /100;           //°ÙÎ»ÎªÒô¸ß
+  len=(note/10)%10;          //Ê®Î»Îª½ÚÅÄ
+  num=note%10;               //¸öÎ»ÎªÒô·û1~7
+  Current_Freq=tone_table[(pitch-1)*7+(num-1)];//»ñÈ¡ÆµÂÊ
+  TH0=Current_Freq/256;
+  TL0=Current_Freq%256;
+  TR0=1;                    //Æô¶¯·¢Éù
+	 //¶¨Òå½ÚÅÄ
+  switch(len)
+  {
+    case 1: Delay_ms(400); break;  //1/4ÅÄ
+    case 2: Delay_ms(800); break;  //1/2ÅÄ
+    case 3: Delay_ms(1600); break;  //1ÅÄ
+    default: Delay_ms(400);
+
+  }
+  TR0 = 0;
+  BEEP = 0;
+  Delay_ms(50);              //½áÊø·¢Éù
+}
+
+//¿¨Å©
+u16 code Canon_Table[] = {
+  225,213,214,231,212,223,127,126,
+  221,117,116,235,116,127,221,222,
+  223,215,311,235,214,223,222,221,
+  222,213,214,232,213,224,321,225,
+  
+  225,213,214,231,212,223,127,126,
+  221,117,116,235,116,127,221,222,
+  223,215,311,235,214,223,222,221,
+  222,213,214,232,213,224,321,225,
+  
+  325,316,315,333,314,323,227,226,
+  321,217,216,335,216,227,321,322,
+  323,315,311,235,214,223,222,221,
+  222,213,214,232,213,224,321,225,
+  
+  225,213,214,231,212,223,127,126,
+  221,117,116,235,116,127,221,222,
+  223,215,311,235,214,223,222,221,
+  222,213,214,232,213,224,321,225,
+ 
+  231,0
+};
+//²¥·Å
+void Play_Canon(void)
+{
+  u16 i=0;
+    while(Canon_Table[i]!=0)
+    {
+			Play_Note(Canon_Table[i]);
+      i++;
+}
+}
+//Ö÷º¯Êý
+void main(void)
+{
+  Timer0_Init();
+  BEEP = 1; 
+  while(1)
+  {
+    Play_Canon();   //²¥·Å
+    Delay_ms(1000);
+  }
+}
