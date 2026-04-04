@@ -1,0 +1,105 @@
+#include <REGX51.H>
+#include "Delay.h"
+#include "uART.h"
+
+sbit IIC_SDA = P2^0;  //IICÊý¾Ý¿Ú
+sbit IIC_SCL = P2^1;  //IICÊ±ÖÓ¿Ú
+#define EEPROM_ADDR 0xA0  //Ð¾Æ¬¹Ì¶¨µØÖ·
+
+void IIC_Start(void)   //IIC×ÜÏßÆðÊ¼ÐÅºÅ
+{
+	IIC_SDA = 1;
+	IIC_SCL = 1;
+	Delay(1);
+	IIC_SDA = 0;
+	Delay(1);
+	IIC_SCL = 0;
+}
+
+void IIC_Stop(void)   //IIC×ÜÏßÍ£Ö¹ÐÅºÅ
+{
+	IIC_SDA = 0;
+	IIC_SCL = 1;
+	Delay(1);
+	IIC_SDA = 1;
+	Delay(1);
+}
+
+void IIC_SendByte(unsigned char dat) //IIC·¢ËÍ1¸ö×Ö½Ú£¬¸øEEPROM·¢Êý¾Ý
+{
+	unsigned char i;
+	for(i=0;i<8;i++)
+	{
+		IIC_SDA = dat & 0x80;
+		dat <<= 1;
+		IIC_SCL = 1;
+		Delay(1);
+		IIC_SCL = 0;
+	}
+	IIC_SDA = 1;
+	IIC_SCL = 1;
+	Delay(1);
+	IIC_SCL = 0;
+}
+
+unsigned char IIC_ReadByte(void)  //IIC¶ÁÈ¡Ò»¸ö×Ö½Ú£¬´ÓEEPROMÄÃÊý¾Ý
+{
+	unsigned char i,dat=0;
+	IIC_SDA = 1;
+	for(i=0;i<8;i++)
+	{
+		dat <<= 1;
+		IIC_SCL = 1;
+		if(IIC_SDA) dat++;
+		IIC_SCL = 0;
+	}
+	return dat;
+}
+
+void EEPROM_Write(unsigned char addr, unsigned char dat)  //°ÑÊý¾Ýdat´æµ½addrµØÖ·ÖÐ
+{
+	IIC_Start();
+	IIC_SendByte(EEPROM_ADDR);   //·¢Ð¾Æ¬µØÖ·
+	IIC_SendByte(addr);          //·¢´æ´¢Î»ÖÃ
+	IIC_SendByte(dat);           //·¢Êý¾Ý
+	IIC_Stop();
+	Delay(10);
+}
+
+unsigned char EEPROM_Read(unsigned char addr)   //´ÓEEPROMµÄaddrµØÖ·¶ÁÊý¾Ý
+{
+	unsigned char dat;
+	IIC_Start();
+	IIC_SendByte(EEPROM_ADDR);
+	IIC_SendByte(addr);                      //¸æËßÐ¾Æ¬¶ÁÈ¡Î»ÖÃ
+	IIC_Start();
+	IIC_SendByte(EEPROM_ADDR+1);             //¶ÁÖ¸Áî
+	dat = IIC_ReadByte();                    //¶ÁÊý¾Ý
+	IIC_Stop();
+	return dat;
+}
+
+void main()
+{
+	unsigned char ReadData;
+	UART_Init();
+	ReadData = EEPROM_Read(0x00);
+	UART_SendByte(ReadData);  
+	
+	while(1)  //µÈ´ý´®¿Ú½ÓÊÜÊý¾Ý
+	{
+		
+	}
+}
+void UART_Routine() interrupt 4
+{
+	unsigned char RecData;
+	if(RI==1)
+	{
+		RecData = SBUF;
+		P2 = ~RecData;          // 
+		UART_SendByte(RecData); //Êý¾Ý´«»ØµçÄÔ
+		EEPROM_Write(0x00, RecData); //Êý¾Ý´æÈëEEPROM
+		RI = 0;
+	}
+}
