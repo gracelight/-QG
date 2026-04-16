@@ -1,0 +1,1081 @@
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN
+OBJECT MODULE PLACED IN main.OBJ
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.exe main.c
+
+line level    source
+
+   1          #include <reg51.h>
+   2          #include <intrins.h>
+   3          
+   4          // ==================== 硬件引脚定义 (AMPIRE128x64 + 矩阵键盘) ====================
+   5          sbit LCD_RS   = P2^0;
+   6          sbit LCD_RW   = P2^1;
+   7          sbit LCD_EN   = P2^2;
+   8          sbit LCD_CS1  = P2^3;  // AMPIRE左屏(0~63列)
+   9          sbit LCD_CS2  = P2^4;  // AMPIRE右屏(64~127列)
+  10          #define LCD_DATA_PORT P0
+  11          
+  12          sbit KEY_ROW1 = P1^0;
+  13          sbit KEY_ROW2 = P1^1;
+  14          sbit KEY_ROW3 = P1^2;
+  15          sbit KEY_ROW4 = P1^3;
+  16          sbit KEY_COL1 = P1^4;
+  17          sbit KEY_COL2 = P1^5;
+  18          sbit KEY_COL3 = P1^6;
+  19          
+  20          sbit BUZZER   = P3^7;
+  21          
+  22          // ==================== 类型别名 ====================
+  23          typedef unsigned char  u8;
+  24          typedef unsigned int   u16;
+  25          
+  26          // ==================== 游戏状态枚举 ====================
+  27          typedef enum {
+  28              STATE_MENU,
+  29              STATE_DIFF_SELECT,
+  30              STATE_MAP_SELECT,
+  31              STATE_GAME_RUN,
+  32              STATE_GAME_PAUSE,
+  33              STATE_GAME_OVER,
+  34              STATE_HISTORY
+  35          } GameState;
+  36          
+  37          // ==================== 塔类型 ====================
+  38          typedef enum {
+  39              TOWER_NONE,
+  40              TOWER_ARROW,
+  41              TOWER_TURRET,
+  42              TOWER_MAGIC,
+  43              TOWER_ENERGY
+  44          } TowerType;
+  45          
+  46          // ==================== 敌人类型 ====================
+  47          typedef enum {
+  48              ENEMY_NONE,
+  49              ENEMY_SQUARE,
+  50              ENEMY_TRIANGLE
+  51          } EnemyType;
+  52          
+  53          // ==================== 塔属性 ====================
+  54          typedef struct {
+  55              u8 atk;        // 攻击力
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 2   
+
+  56              u8 hp;         // 血量
+  57              u8 speed;      // 子弹速度
+  58              u8 range;      // 攻击范围
+  59              u8 type;       // 塔类型
+  60              u8 cd;         // 冷却时间
+  61              u8 cost;       // 购买费用
+  62              u8 energy_add; // 能量增加
+  63          } TowerAttr;
+  64          
+  65          // ==================== 敌人属性 ====================
+  66          typedef struct {
+  67              u8 atk;        // 攻击力
+  68              u8 hp;         // 血量
+  69              u8 speed;      // 移动速度
+  70              u8 range;      // 攻击范围
+  71              u8 cd;         // 冷却时间
+  72          } EnemyAttr;
+  73          
+  74          // ==================== 难度配置 ====================
+  75          typedef struct {
+  76              u8 spawn_delay;    // 敌人出现延迟
+  77              u8 initial_energy; // 初始能量
+  78              u8 total_enemy;    // 总敌人数量
+  79              u8 square_count;   // 方块敌人数量
+  80              u8 triangle_count; // 三角形敌人数量
+  81              u8 spawn_interval; // 敌人出现间隔
+  82          } DifficultyConfig;
+  83          
+  84          // ==================== 塔结构体 ====================
+  85          typedef struct {
+  86              TowerType type;     // 塔类型
+  87              u8 x;               // x坐标
+  88              u8 y;               // y坐标
+  89              u8 current_hp;      // 当前血量
+  90              u8 current_cd;      // 当前冷却时间
+  91              u8 energy_cnt;      // 能量计数
+  92          } Tower;
+  93          
+  94          // ==================== 敌人结构体 ====================
+  95          typedef struct {
+  96              EnemyType type;     // 敌人类型
+  97              u8 x;               // x坐标
+  98              u8 y;               // y坐标
+  99              u8 current_hp;      // 当前血量
+ 100              u8 current_cd;      // 当前冷却时间
+ 101              u8 is_alive;        // 是否存活
+ 102          } Enemy;
+ 103          
+ 104          // ==================== 子弹结构体 ====================
+ 105          typedef struct {
+ 106              u8 is_active;       // 是否激活
+ 107              u8 x;               // x坐标
+ 108              u8 y;               // y坐标
+ 109              u8 atk;             // 攻击力
+ 110              u8 speed;           // 速度
+ 111              u8 target_y;        // 目标y坐标
+ 112              u8 move_cnt;        // 移动计数
+ 113          } Bullet;
+ 114          
+ 115          // ==================== 游戏记录结构体 ====================
+ 116          typedef struct {
+ 117              u8 difficulty;      // 难度
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 3   
+
+ 118              u8 base_hp_left;    // 大本营剩余血量
+ 119              u16 play_time;      // 游戏时间
+ 120              u8 is_win;          // 是否胜利
+ 121              u8 kill_count;      // 消灭敌人数量
+ 122          } GameRecord;
+ 123          
+ 124          // ==================== 常量配置 ====================
+ 125          const TowerAttr tower_attr[5] = {
+ 126              {0,0,0,0,0,0,0,0},                      // 无塔
+ 127              {10,20,4,5,0,10,1,0},                   // 箭塔
+ 128              {20,30,5,3,1,10,2,0},                   // 炮塔
+ 129              {15,30,7,4,2,15,3,0},                   // 魔法塔
+ 130              {0,40,0,0,0,0,2,20}                     // 充能塔
+ 131          };
+ 132          
+ 133          const EnemyAttr enemy_attr[3] = {
+ 134              {0,0,0,0,0},                            // 无敌人
+ 135              {10,50,8,1,10},                         // 方块敌人
+ 136              {20,30,10,1,10}                         // 三角形敌人
+ 137          };
+ 138          
+ 139          const DifficultyConfig diff_config[3] = {
+ 140              {4,5,10,5,5,20},                        // 简单
+ 141              {3,4,13,7,6,15},                        // 中等
+ 142              {2,3,16,9,7,12}                         // 困难
+ 143          };
+ 144          
+ 145          // ==================== 宏定义 ====================
+ 146          #define MAX_TOWER     10     // 最大塔数量
+ 147          #define MAX_ENEMY     10     // 最大敌人数量
+ 148          #define MAX_BULLET    8      // 最大子弹数量
+ 149          #define BASE_MAX_HP   80     // 大本营最大血量
+ 150          #define ENERGY_MAX    9      // 能量上限
+ 151          #define GRID_ROW      5      // 网格行数
+ 152          #define GRID_COL      6      // 网格列数
+ 153          
+ 154          // ==================== 全局变量 ====================
+ 155          GameState game_state = STATE_MENU;        // 游戏状态
+ 156          u8 current_diff = 0;                       // 当前难度
+ 157          u8 current_map = 0;                        // 当前地图
+ 158          u8 menu_cursor = 0;                        // 菜单光标
+ 159          u8 select_cursor_x = 1;                    // 选择光标x坐标
+ 160          u8 select_cursor_y = 2;                    // 选择光标y坐标
+ 161          u8 base_hp = BASE_MAX_HP;                 // 大本营血量
+ 162          u8 current_energy = 0;                     // 当前能量
+ 163          u16 game_tick = 0;                         // 游戏 ticks
+ 164          u16 game_time = 0;                         // 游戏时间
+ 165          u8 enemy_spawn_cnt = 0;                    // 敌人出现计数
+ 166          u8 spawned_enemy = 0;                      // 已出现敌人数量
+ 167          u8 killed_enemy = 0;                       // 已消灭敌人数量
+ 168          u8 game_result = 0;                        // 游戏结果
+ 169          
+ 170          Tower xdata tower_list[MAX_TOWER];         // 塔列表
+ 171          Enemy xdata enemy_list[MAX_ENEMY];         // 敌人列表
+ 172          Bullet xdata bullet_list[MAX_BULLET];      // 子弹列表
+ 173          GameRecord xdata record_list[2];           // 游戏记录列表
+ 174          u8 record_cnt = 0;                         // 记录数量
+ 175          
+ 176          u8 game_key = 0xFF;                        // 按键值
+ 177          u8 refresh_flag = 0;                       // 刷新标志
+ 178          u8 select_tower_type = TOWER_ARROW;        // 选择的塔类型
+ 179          
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 4   
+
+ 180          // ==================== AMPIRE128x64 专用8x16字模 ====================
+ 181          const u8 ascii_font[][16] = {
+ 182              // 空格 0
+ 183              {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},
+ 184              // 0
+ 185              {0x00,0x3E,0x41,0x41,0x41,0x3E,0x00,0x00,0x00,0x3E,0x41,0x41,0x41,0x3E,0x00,0x00},
+ 186              // 1
+ 187              {0x00,0x00,0x00,0x7F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x7F,0x00,0x00,0x00,0x00},
+ 188              // 2
+ 189              {0x00,0x71,0x49,0x49,0x49,0x46,0x00,0x00,0x00,0x46,0x49,0x49,0x49,0x71,0x00,0x00},
+ 190              // 3
+ 191              {0x00,0x49,0x49,0x49,0x49,0x7F,0x00,0x00,0x00,0x7F,0x49,0x49,0x49,0x49,0x00,0x00},
+ 192              // 4
+ 193              {0x00,0x0F,0x08,0x08,0x08,0x7F,0x00,0x00,0x00,0x7F,0x08,0x08,0x08,0x0F,0x00,0x00},
+ 194              // 5
+ 195              {0x00,0x4F,0x49,0x49,0x49,0x79,0x00,0x00,0x00,0x79,0x49,0x49,0x49,0x4F,0x00,0x00},
+ 196              // 6
+ 197              {0x00,0x7F,0x49,0x49,0x49,0x79,0x00,0x00,0x00,0x79,0x49,0x49,0x49,0x7F,0x00,0x00},
+ 198              // 7
+ 199              {0x00,0x01,0x01,0x01,0x01,0x7F,0x00,0x00,0x00,0x7F,0x01,0x01,0x01,0x01,0x00,0x00},
+ 200              // 8
+ 201              {0x00,0x7F,0x49,0x49,0x49,0x7F,0x00,0x00,0x00,0x7F,0x49,0x49,0x49,0x7F,0x00,0x00},
+ 202              // 9
+ 203              {0x00,0x4F,0x49,0x49,0x49,0x7F,0x00,0x00,0x00,0x7F,0x49,0x49,0x49,0x4F,0x00,0x00},
+ 204              // A
+ 205              {0x00,0x7F,0x41,0x41,0x41,0x7F,0x00,0x00,0x00,0x7F,0x41,0x41,0x41,0x7F,0x00,0x00},
+ 206              // B
+ 207              {0x00,0x7F,0x49,0x49,0x49,0x79,0x00,0x00,0x00,0x79,0x49,0x49,0x49,0x7F,0x00,0x00},
+ 208              // C
+ 209              {0x00,0x3E,0x41,0x41,0x41,0x22,0x00,0x00,0x00,0x22,0x41,0x41,0x41,0x3E,0x00,0x00},
+ 210              // D
+ 211              {0x00,0x7F,0x41,0x41,0x41,0x3E,0x00,0x00,0x00,0x3E,0x41,0x41,0x41,0x7F,0x00,0x00},
+ 212              // E
+ 213              {0x00,0x7F,0x49,0x49,0x49,0x41,0x00,0x00,0x00,0x41,0x49,0x49,0x49,0x7F,0x00,0x00},
+ 214              // F
+ 215              {0x00,0x7F,0x09,0x09,0x09,0x01,0x00,0x00,0x00,0x01,0x09,0x09,0x09,0x7F,0x00,0x00},
+ 216              // G
+ 217              {0x00,0x3E,0x41,0x49,0x49,0x3A,0x00,0x00,0x00,0x3A,0x49,0x49,0x41,0x3E,0x00,0x00},
+ 218              // H
+ 219              {0x00,0x7F,0x08,0x08,0x08,0x7F,0x00,0x00,0x00,0x7F,0x08,0x08,0x08,0x7F,0x00,0x00},
+ 220              // I
+ 221              {0x00,0x00,0x7F,0x00,0x00,0x7F,0x00,0x00,0x00,0x00,0x7F,0x00,0x00,0x7F,0x00,0x00},
+ 222              // J
+ 223              {0x00,0x40,0x40,0x40,0x40,0x7F,0x00,0x00,0x00,0x7F,0x40,0x40,0x40,0x40,0x00,0x00},
+ 224              // K
+ 225              {0x00,0x7F,0x08,0x14,0x22,0x41,0x00,0x00,0x00,0x41,0x22,0x14,0x08,0x7F,0x00,0x00},
+ 226              // L
+ 227              {0x00,0x7F,0x40,0x40,0x40,0x40,0x00,0x00,0x00,0x40,0x40,0x40,0x40,0x7F,0x00,0x00},
+ 228              // M
+ 229              {0x00,0x7F,0x02,0x04,0x02,0x7F,0x00,0x00,0x00,0x7F,0x02,0x04,0x02,0x7F,0x00,0x00},
+ 230              // N
+ 231              {0x00,0x7F,0x04,0x08,0x10,0x7F,0x00,0x00,0x00,0x7F,0x10,0x08,0x04,0x7F,0x00,0x00},
+ 232              // O
+ 233              {0x00,0x3E,0x41,0x41,0x41,0x3E,0x00,0x00,0x00,0x3E,0x41,0x41,0x41,0x3E,0x00,0x00},
+ 234              // P
+ 235              {0x00,0x7F,0x09,0x09,0x09,0x06,0x00,0x00,0x00,0x06,0x09,0x09,0x09,0x7F,0x00,0x00},
+ 236              // Q
+ 237              {0x00,0x3E,0x41,0x51,0x21,0x5E,0x00,0x00,0x00,0x5E,0x21,0x51,0x41,0x3E,0x00,0x00},
+ 238              // R
+ 239              {0x00,0x7F,0x09,0x19,0x29,0x46,0x00,0x00,0x00,0x46,0x29,0x19,0x09,0x7F,0x00,0x00},
+ 240              // S
+ 241              {0x00,0x46,0x49,0x49,0x49,0x31,0x00,0x00,0x00,0x31,0x49,0x49,0x49,0x46,0x00,0x00},
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 5   
+
+ 242              // T
+ 243              {0x00,0x01,0x01,0x7F,0x01,0x01,0x00,0x00,0x00,0x01,0x01,0x7F,0x01,0x01,0x00,0x00},
+ 244              // U
+ 245              {0x00,0x3F,0x40,0x40,0x40,0x3F,0x00,0x00,0x00,0x3F,0x40,0x40,0x40,0x3F,0x00,0x00},
+ 246              // V
+ 247              {0x00,0x1F,0x20,0x40,0x20,0x1F,0x00,0x00,0x00,0x1F,0x20,0x40,0x20,0x1F,0x00,0x00},
+ 248              // W
+ 249              {0x00,0x7F,0x20,0x10,0x20,0x7F,0x00,0x00,0x00,0x7F,0x20,0x10,0x20,0x7F,0x00,0x00},
+ 250              // X
+ 251              {0x00,0x63,0x14,0x08,0x14,0x63,0x00,0x00,0x00,0x63,0x14,0x08,0x14,0x63,0x00,0x00},
+ 252              // Y
+ 253              {0x00,0x7F,0x08,0x08,0x08,0x08,0x00,0x00,0x00,0x08,0x08,0x08,0x08,0x7F,0x00,0x00},
+ 254              // Z
+ 255              {0x00,0x61,0x49,0x49,0x49,0x7E,0x00,0x00,0x00,0x7E,0x49,0x49,0x49,0x61,0x00,0x00},
+ 256              // >
+ 257              {0x00,0x00,0x00,0x00,0x00,0x7F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x7F,0x00,0x00},
+ 258              // -
+ 259              {0x00,0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00},
+ 260              // *
+ 261              {0x00,0x22,0x14,0x7F,0x14,0x22,0x00,0x00,0x00,0x22,0x14,0x7F,0x14,0x22,0x00,0x00},
+ 262              // O
+ 263              {0x00,0x7E,0x81,0x81,0x81,0x7E,0x00,0x00,0x00,0x7E,0x81,0x81,0x81,0x7E,0x00,0x00},
+ 264              // X
+ 265              {0x00,0x81,0x42,0x24,0x18,0x42,0x81,0x00,0x00,0x81,0x42,0x24,0x18,0x42,0x81,0x00},
+ 266              // #
+ 267              {0x00,0x14,0x7F,0x14,0x7F,0x14,0x00,0x00,0x00,0x14,0x7F,0x14,0x7F,0x14,0x00,0x00},
+ 268              // =
+ 269              {0x00,0x00,0x00,0x7E,0x00,0x7E,0x00,0x00,0x00,0x00,0x7E,0x00,0x7E,0x00,0x00,0x00},
+ 270              // .
+ 271              {0x00,0x00,0x00,0x00,0x00,0x00,0x18,0x18,0x00,0x18,0x18,0x00,0x00,0x00,0x00,0x00}
+ 272          };
+ 273          
+ 274          // ==================== 延时函数 ====================
+ 275          void delay_ms(u16 ms)
+ 276          {
+ 277   1          u16 i, j;
+ 278   1          for(i = 0; i < ms; i++)
+ 279   1              for(j = 0; j < 110; j++);
+ 280   1      }
+ 281          
+ 282          void delay_10us(u8 t)
+ 283          {
+ 284   1          while(t--) _nop_();
+ 285   1      }
+ 286          
+ 287          // ==================== AMPIRE128x64 核心驱动 ====================
+ 288          void lcd_left(void)  { LCD_CS1 = 0; LCD_CS2 = 1; }
+ 289          void lcd_right(void) { LCD_CS1 = 1; LCD_CS2 = 0; }
+ 290          
+ 291          void lcd_write_cmd(u8 cmd)
+ 292          {
+ 293   1          LCD_EN = 0;
+ 294   1          LCD_RS = 0;
+ 295   1          LCD_RW = 0;
+ 296   1          LCD_DATA_PORT = cmd;
+ 297   1          delay_10us(2);
+ 298   1          LCD_EN = 1;
+ 299   1          delay_10us(5);
+ 300   1          LCD_EN = 0;
+ 301   1      }
+ 302          
+ 303          void lcd_write_data(u8 dat)
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 6   
+
+ 304          {
+ 305   1          LCD_EN = 0;
+ 306   1          LCD_RS = 1;
+ 307   1          LCD_RW = 0;
+ 308   1          LCD_DATA_PORT = dat;
+ 309   1          delay_10us(2);
+ 310   1          LCD_EN = 1;
+ 311   1          delay_10us(5);
+ 312   1          LCD_EN = 0;
+ 313   1      }
+ 314          
+ 315          void lcd_set_pos(u8 x, u8 page)
+ 316          {
+ 317   1          if(x < 64) { lcd_left(); }
+ 318   1          else { lcd_right(); x -= 64; }
+ 319   1          lcd_write_cmd(0xB8 | page);
+ 320   1          lcd_write_cmd(0x40 | x);
+ 321   1      }
+ 322          
+ 323          void lcd_clear(void)
+ 324          {
+ 325   1          u8 page, col;
+ 326   1          // 左屏清屏
+ 327   1          lcd_left();
+ 328   1          for(page = 0; page < 8; page++)
+ 329   1          {
+ 330   2              lcd_write_cmd(0xB8 | page);
+ 331   2              lcd_write_cmd(0x40);
+ 332   2              for(col = 0; col < 64; col++)
+ 333   2                  lcd_write_data(0x00);
+ 334   2          }
+ 335   1          // 右屏清屏
+ 336   1          lcd_right();
+ 337   1          for(page = 0; page < 8; page++)
+ 338   1          {
+ 339   2              lcd_write_cmd(0xB8 | page);
+ 340   2              lcd_write_cmd(0x40);
+ 341   2              for(col = 0; col < 64; col++)
+ 342   2                  lcd_write_data(0x00);
+ 343   2          }
+ 344   1      }
+ 345          
+ 346          void lcd_init(void)
+ 347          {
+ 348   1          LCD_CS1 = 1;
+ 349   1          LCD_CS2 = 1;
+ 350   1          delay_ms(50);
+ 351   1      
+ 352   1          // 左屏初始化
+ 353   1          lcd_left();
+ 354   1          lcd_write_cmd(0x3E);
+ 355   1          lcd_write_cmd(0xC0);
+ 356   1          lcd_write_cmd(0x3F);
+ 357   1      
+ 358   1          // 右屏初始化
+ 359   1          lcd_right();
+ 360   1          lcd_write_cmd(0x3E);
+ 361   1          lcd_write_cmd(0xC0);
+ 362   1          lcd_write_cmd(0x3F);
+ 363   1      
+ 364   1          lcd_clear();
+ 365   1      }
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 7   
+
+ 366          
+ 367          void lcd_show_char(u8 x, u8 page, u8 ch)
+ 368          {
+ 369   1          u8 i, idx = 0;
+ 370   1          // 字符映射
+ 371   1          if(ch == '0') idx = 1;
+ 372   1          else if(ch == '1') idx = 2;
+ 373   1          else if(ch == '2') idx = 3;
+ 374   1          else if(ch == '3') idx = 4;
+ 375   1          else if(ch == '4') idx = 5;
+ 376   1          else if(ch == '5') idx = 6;
+ 377   1          else if(ch == '6') idx = 7;
+ 378   1          else if(ch == '7') idx = 8;
+ 379   1          else if(ch == '8') idx = 9;
+ 380   1          else if(ch == '9') idx = 10;
+ 381   1          else if(ch == 'A') idx = 11;
+ 382   1          else if(ch == 'B') idx = 12;
+ 383   1          else if(ch == 'C') idx = 13;
+ 384   1          else if(ch == 'D') idx = 14;
+ 385   1          else if(ch == 'E') idx = 15;
+ 386   1          else if(ch == 'F') idx = 16;
+ 387   1          else if(ch == 'G') idx = 17;
+ 388   1          else if(ch == 'H') idx = 18;
+ 389   1          else if(ch == 'I') idx = 19;
+ 390   1          else if(ch == 'J') idx = 20;
+ 391   1          else if(ch == 'K') idx = 21;
+ 392   1          else if(ch == 'L') idx = 22;
+ 393   1          else if(ch == 'M') idx = 23;
+ 394   1          else if(ch == 'N') idx = 24;
+ 395   1          else if(ch == 'O') idx = 25;
+ 396   1          else if(ch == 'P') idx = 26;
+ 397   1          else if(ch == 'Q') idx = 27;
+ 398   1          else if(ch == 'R') idx = 28;
+ 399   1          else if(ch == 'S') idx = 29;
+ 400   1          else if(ch == 'T') idx = 30;
+ 401   1          else if(ch == 'U') idx = 31;
+ 402   1          else if(ch == 'V') idx = 32;
+ 403   1          else if(ch == 'W') idx = 33;
+ 404   1          else if(ch == 'X') idx = 34;
+ 405   1          else if(ch == 'Y') idx = 35;
+ 406   1          else if(ch == 'Z') idx = 36;
+ 407   1          else if(ch == '>') idx = 37;
+ 408   1          else if(ch == '-') idx = 38;
+ 409   1          else if(ch == '*') idx = 39;
+ 410   1          else if(ch == 'O') idx = 40;
+ 411   1          else if(ch == 'X') idx = 41;
+ 412   1          else if(ch == '#') idx = 42;
+ 413   1          else if(ch == '=') idx = 43;
+ 414   1          else if(ch == '.') idx = 44;
+ 415   1          else idx = 0;
+ 416   1      
+ 417   1          // 显示上半部分
+ 418   1          lcd_set_pos(x*8, page);
+ 419   1          for(i = 0; i < 8; i++)
+ 420   1              lcd_write_data(ascii_font[idx][i]);
+ 421   1          // 显示下半部分
+ 422   1          lcd_set_pos(x*8, page+1);
+ 423   1          for(i = 8; i < 16; i++)
+ 424   1              lcd_write_data(ascii_font[idx][i]);
+ 425   1      }
+ 426          
+ 427          void lcd_show_str(u8 x, u8 page, char *str)
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 8   
+
+ 428          {
+ 429   1          while(*str && x < 16)
+ 430   1          {
+ 431   2              lcd_show_char(x++, page, *str++);
+ 432   2          }
+ 433   1      }
+ 434          
+ 435          // ==================== 矩阵键盘扫描 ====================
+ 436          void key_scan(void)
+ 437          {
+ 438   1          u8 row, col;
+ 439   1          game_key = 0xFF;
+ 440   1      
+ 441   1          // 行扫描
+ 442   1          for(row = 0; row < 4; row++)
+ 443   1          {
+ 444   2              P1 = 0x0F;
+ 445   2              switch(row)
+ 446   2              {
+ 447   3                  case 0: KEY_ROW1 = 0; break;
+ 448   3                  case 1: KEY_ROW2 = 0; break;
+ 449   3                  case 2: KEY_ROW3 = 0; break;
+ 450   3                  case 3: KEY_ROW4 = 0; break;
+ 451   3              }
+ 452   2              delay_ms(5);
+ 453   2      
+ 454   2              // 列检测
+ 455   2              for(col = 0; col < 3; col++)
+ 456   2              {
+ 457   3                  u8 val = 1;
+ 458   3                  switch(col)
+ 459   3                  {
+ 460   4                      case 0: val = KEY_COL1; break;
+ 461   4                      case 1: val = KEY_COL2; break;
+ 462   4                      case 2: val = KEY_COL3; break;
+ 463   4                  }
+ 464   3                  if(val == 0)
+ 465   3                  {
+ 466   4                      delay_ms(20);
+ 467   4                      if(val == 0)
+ 468   4                      {
+ 469   5                          game_key = row * 3 + col;
+ 470   5                          while(val == 0) {
+ 471   6                              switch(col){case 0:val=KEY_COL1;break;case 1:val=KEY_COL2;break;case 2:val=KEY_COL
+             -3;break;}
+ 472   6                          }
+ 473   5                          return;
+ 474   5                      }
+ 475   4                  }
+ 476   3              }
+ 477   2          }
+ 478   1      }
+ 479          
+ 480          // ==================== 游戏辅助函数 ====================
+ 481          u8 rand_num(u8 min, u8 max) {
+ 482   1          static u16 seed = 0;
+ 483   1          if(seed == 0) seed = game_tick;
+ 484   1          seed = seed * 1103515245 + 12345;
+ 485   1          return (seed % (max - min + 1)) + min;
+ 486   1      }
+ 487          
+ 488          u8 find_empty_tower(void) {
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 9   
+
+ 489   1          u8 i;
+ 490   1          for(i = 0; i < MAX_TOWER; i++) {
+ 491   2              if(tower_list[i].type == TOWER_NONE) return i;
+ 492   2          }
+ 493   1          return 0xFF;
+ 494   1      }
+ 495          
+ 496          u8 find_empty_enemy(void) {
+ 497   1          u8 i;
+ 498   1          for(i = 0; i < MAX_ENEMY; i++) {
+ 499   2              if(enemy_list[i].is_alive == 0) return i;
+ 500   2          }
+ 501   1          return 0xFF;
+ 502   1      }
+ 503          
+ 504          u8 find_empty_bullet(void) {
+ 505   1          u8 i;
+ 506   1          for(i = 0; i < MAX_BULLET; i++) {
+ 507   2              if(bullet_list[i].is_active == 0) return i;
+ 508   2          }
+ 509   1          return 0xFF;
+ 510   1      }
+ 511          
+ 512          u8 check_tower_at(u8 x, u8 y) {
+ 513   1          u8 i;
+ 514   1          for(i = 0; i < MAX_TOWER; i++) {
+ 515   2              if(tower_list[i].type != TOWER_NONE && tower_list[i].x == x && tower_list[i].y == y) {
+ 516   3                  return i;
+ 517   3              }
+ 518   2          }
+ 519   1          return 0xFF;
+ 520   1      }
+ 521          
+ 522          u8 check_enemy_at(u8 x, u8 y) {
+ 523   1          u8 i;
+ 524   1          for(i = 0; i < MAX_ENEMY; i++) {
+ 525   2              if(enemy_list[i].is_alive && enemy_list[i].x == x && enemy_list[i].y == y) {
+ 526   3                  return i;
+ 527   3              }
+ 528   2          }
+ 529   1          return 0xFF;
+ 530   1      }
+ 531          
+ 532          // ==================== 游戏逻辑函数 ====================
+ 533          void game_init(void) {
+ 534   1          u8 i;
+ 535   1          for(i = 0; i < MAX_TOWER; i++) {
+ 536   2              tower_list[i].type = TOWER_NONE;
+ 537   2              tower_list[i].current_hp = 0;
+ 538   2              tower_list[i].current_cd = 0;
+ 539   2              tower_list[i].energy_cnt = 0;
+ 540   2          }
+ 541   1          for(i = 0; i < MAX_ENEMY; i++) {
+ 542   2              enemy_list[i].is_alive = 0;
+ 543   2              enemy_list[i].current_hp = 0;
+ 544   2          }
+ 545   1          for(i = 0; i < MAX_BULLET; i++) {
+ 546   2              bullet_list[i].is_active = 0;
+ 547   2          }
+ 548   1          base_hp = BASE_MAX_HP;
+ 549   1          current_energy = diff_config[current_diff].initial_energy;
+ 550   1          game_tick = 0;
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 10  
+
+ 551   1          game_time = 0;
+ 552   1          enemy_spawn_cnt = 0;
+ 553   1          spawned_enemy = 0;
+ 554   1          killed_enemy = 0;
+ 555   1          game_result = 0;
+ 556   1          select_cursor_x = 1;
+ 557   1          select_cursor_y = 2;
+ 558   1          refresh_flag = 1;
+ 559   1      }
+ 560          
+ 561          void enemy_spawn(void) {
+ 562   1          u8 enemy_id, lane;
+ 563   1          if(spawned_enemy >= diff_config[current_diff].total_enemy) return;
+ 564   1          if(game_tick < diff_config[current_diff].spawn_delay * 50) return;
+ 565   1          if(enemy_spawn_cnt < diff_config[current_diff].spawn_interval) {
+ 566   2              enemy_spawn_cnt++;
+ 567   2              return;
+ 568   2          }
+ 569   1          enemy_spawn_cnt = 0;
+ 570   1          enemy_id = find_empty_enemy();
+ 571   1          if(enemy_id == 0xFF) return;
+ 572   1          lane = rand_num(1, 5);
+ 573   1          enemy_list[enemy_id].type = (spawned_enemy < diff_config[current_diff].square_count) ? ENEMY_SQUARE : 
+             -ENEMY_TRIANGLE;
+ 574   1          enemy_list[enemy_id].x = 0;
+ 575   1          enemy_list[enemy_id].y = lane - 1;
+ 576   1          enemy_list[enemy_id].current_hp = enemy_attr[enemy_list[enemy_id].type].hp;
+ 577   1          enemy_list[enemy_id].current_cd = 0;
+ 578   1          enemy_list[enemy_id].is_alive = 1;
+ 579   1          spawned_enemy++;
+ 580   1      }
+ 581          
+ 582          void tower_attack(void) {
+ 583   1          u8 i, j, target_id, bullet_id;
+ 584   1          for(i = 0; i < MAX_TOWER; i++) {
+ 585   2              if(tower_list[i].type == TOWER_NONE) continue;
+ 586   2              if(tower_list[i].type == TOWER_ENERGY) {
+ 587   3                  tower_list[i].energy_cnt++;
+ 588   3                  if(tower_list[i].energy_cnt >= tower_attr[TOWER_ENERGY].energy_add) {
+ 589   4                      tower_list[i].energy_cnt = 0;
+ 590   4                      if(current_energy < ENERGY_MAX) current_energy++;
+ 591   4                  }
+ 592   3                  continue;
+ 593   3              }
+ 594   2              if(tower_list[i].current_cd < tower_attr[tower_list[i].type].cd) {
+ 595   3                  tower_list[i].current_cd++;
+ 596   3                  continue;
+ 597   3              }
+ 598   2              target_id = 0xFF;
+ 599   2              for(j = 0; j < MAX_ENEMY; j++) {
+ 600   3                  if(enemy_list[j].is_alive) {
+ 601   4                      u8 dx = tower_list[i].x - enemy_list[j].x;
+ 602   4                      u8 dy = tower_list[i].y > enemy_list[j].y ? tower_list[i].y - enemy_list[j].y : enemy_list
+             -[j].y - tower_list[i].y;
+ 603   4                      if(dx <= tower_attr[tower_list[i].type].range && dy <= tower_attr[tower_list[i].type].rang
+             -e) {
+ 604   5                          target_id = j;
+ 605   5                          break;
+ 606   5                      }
+ 607   4                  }
+ 608   3              }
+ 609   2              if(target_id != 0xFF) {
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 11  
+
+ 610   3                  bullet_id = find_empty_bullet();
+ 611   3                  if(bullet_id != 0xFF) {
+ 612   4                      bullet_list[bullet_id].is_active = 1;
+ 613   4                      bullet_list[bullet_id].x = tower_list[i].x;
+ 614   4                      bullet_list[bullet_id].y = tower_list[i].y;
+ 615   4                      bullet_list[bullet_id].atk = tower_attr[tower_list[i].type].atk;
+ 616   4                      bullet_list[bullet_id].speed = tower_attr[tower_list[i].type].speed;
+ 617   4                      bullet_list[bullet_id].target_y = enemy_list[target_id].y;
+ 618   4                      bullet_list[bullet_id].move_cnt = 0;
+ 619   4                      tower_list[i].current_cd = 0;
+ 620   4                      // 蜂鸣器音效
+ 621   4                      BUZZER = 0;
+ 622   4                      delay_ms(10);
+ 623   4                      BUZZER = 1;
+ 624   4                  }
+ 625   3              }
+ 626   2          }
+ 627   1      }
+ 628          
+ 629          void bullet_update(void) {
+ 630   1          u8 i, j;
+ 631   1          for(i = 0; i < MAX_BULLET; i++) {
+ 632   2              if(bullet_list[i].is_active) {
+ 633   3                  bullet_list[i].move_cnt++;
+ 634   3                  if(bullet_list[i].move_cnt >= bullet_list[i].speed) {
+ 635   4                      bullet_list[i].move_cnt = 0;
+ 636   4                      bullet_list[i].x--;
+ 637   4                      if(bullet_list[i].x < 0) {
+ 638   5                          bullet_list[i].is_active = 0;
+ 639   5                          continue;
+ 640   5                      }
+ 641   4                      for(j = 0; j < MAX_ENEMY; j++) {
+ 642   5                          if(enemy_list[j].is_alive && enemy_list[j].x == bullet_list[i].x && enemy_list[j].y ==
+             - bullet_list[i].y) {
+ 643   6                              enemy_list[j].current_hp -= bullet_list[i].atk;
+ 644   6                              if(enemy_list[j].current_hp <= 0) {
+ 645   7                                  enemy_list[j].is_alive = 0;
+ 646   7                                  killed_enemy++;
+ 647   7                              }
+ 648   6                              bullet_list[i].is_active = 0;
+ 649   6                              break;
+ 650   6                          }
+ 651   5                      }
+ 652   4                  }
+ 653   3              }
+ 654   2          }
+ 655   1      }
+ 656          
+ 657          void enemy_update(void) {
+ 658   1          u8 i, j, tower_id;
+ 659   1          for(i = 0; i < MAX_ENEMY; i++) {
+ 660   2              if(enemy_list[i].is_alive) {
+ 661   3                  if(enemy_list[i].current_cd < enemy_attr[enemy_list[i].type].cd) {
+ 662   4                      enemy_list[i].current_cd++;
+ 663   4                  }
+ 664   3                  tower_id = check_tower_at(enemy_list[i].x, enemy_list[i].y);
+ 665   3                  if(tower_id != 0xFF) {
+ 666   4                      if(enemy_list[i].current_cd >= enemy_attr[enemy_list[i].type].cd) {
+ 667   5                          tower_list[tower_id].current_hp -= enemy_attr[enemy_list[i].type].atk;
+ 668   5                          if(tower_list[tower_id].current_hp <= 0) {
+ 669   6                              tower_list[tower_id].type = TOWER_NONE;
+ 670   6                          }
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 12  
+
+ 671   5                          enemy_list[i].current_cd = 0;
+ 672   5                      }
+ 673   4                      continue;
+ 674   4                  }
+ 675   3                  if(enemy_list[i].x >= GRID_COL - 1) {
+ 676   4                      base_hp -= 20;
+ 677   4                      if(base_hp < 0) base_hp = 0;
+ 678   4                      enemy_list[i].is_alive = 0;
+ 679   4                      killed_enemy++;
+ 680   4                      continue;
+ 681   4                  }
+ 682   3                  enemy_list[i].x++;
+ 683   3              }
+ 684   2          }
+ 685   1      }
+*** WARNING C280 IN LINE 658 OF main.c: 'j': unreferenced local variable
+ 686          
+ 687          void game_over_check(void) {
+ 688   1          if(base_hp <= 0) {
+ 689   2              base_hp = 0;
+ 690   2              game_result = 0;
+ 691   2              game_state = STATE_GAME_OVER;
+ 692   2              save_record();
+*** WARNING C206 IN LINE 692 OF main.c: 'save_record': missing function-prototype
+ 693   2              draw_game_over();
+*** WARNING C206 IN LINE 693 OF main.c: 'draw_game_over': missing function-prototype
+ 694   2          }
+ 695   1          if(spawned_enemy >= diff_config[current_diff].total_enemy && killed_enemy >= spawned_enemy) {
+ 696   2              game_result = 1;
+ 697   2              game_state = STATE_GAME_OVER;
+ 698   2              save_record();
+ 699   2              draw_game_over();
+ 700   2          }
+ 701   1      }
+ 702          
+ 703          void save_record(void) {
+*** ERROR C231 IN LINE 703 OF main.c: 'save_record': redefinition
+ 704   1          record_list[1] = record_list[0];
+ 705   1          record_list[0].difficulty = current_diff;
+ 706   1          record_list[0].base_hp_left = base_hp;
+ 707   1          record_list[0].play_time = game_time;
+ 708   1          record_list[0].is_win = game_result;
+ 709   1          record_list[0].kill_count = killed_enemy;
+ 710   1          if(record_cnt < 2) record_cnt++;
+ 711   1      }
+*** ERROR C231 IN LINE 711 OF main.c: 'save_record': redefinition
+ 712          
+ 713          // ==================== 界面绘制函数 ====================
+ 714          void draw_menu(void) {
+ 715   1          lcd_clear();
+ 716   1          lcd_show_str(6, 0, "FAD");
+ 717   1          lcd_show_str(0, 2, (menu_cursor == 0) ? ">HOW TO PLAY" : " HOW TO PLAY");
+ 718   1          lcd_show_str(0, 4, (menu_cursor == 1) ? ">HISTORY" : " HISTORY");
+ 719   1          lcd_show_str(0, 6, (menu_cursor == 2) ? ">START GAME" : " START GAME");
+ 720   1          lcd_show_str(0, 7, (menu_cursor == 3) ? ">EXIT" : " EXIT");
+ 721   1      }
+ 722          
+ 723          void draw_diff_select(void) {
+ 724   1          lcd_clear();
+ 725   1          lcd_show_str(3, 0, "DIFFICULTY");
+ 726   1          lcd_show_str(0, 2, (menu_cursor == 0) ? ">EASY" : " EASY");
+ 727   1          lcd_show_str(5, 2, (menu_cursor == 1) ? ">MID" : " MID");
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 13  
+
+ 728   1          lcd_show_str(10, 2, (menu_cursor == 2) ? ">HARD" : " HARD");
+ 729   1      }
+ 730          
+ 731          void draw_map_select(void) {
+ 732   1          lcd_clear();
+ 733   1          lcd_show_str(3, 0, "SELECT MAP");
+ 734   1          lcd_show_str(0, 2, (menu_cursor == 0) ? ">5 LINE" : " 5 LINE");
+ 735   1          lcd_show_str(8, 2, (menu_cursor == 1) ? ">3 LINE" : " 3 LINE");
+ 736   1      }
+ 737          
+ 738          void draw_game_screen(void) {
+ 739   1          u8 i, j, lcd_x, lcd_y, tower_id, enemy_id, b, cursor_x, cursor_y;
+ 740   1          lcd_clear();
+ 741   1          
+ 742   1          // 最上方一行为防守方装备，4种，为固定背景
+ 743   1          lcd_show_str(0, 0, "* - # =");
+ 744   1          lcd_show_str(0, 1, "E A M T");
+ 745   1          
+ 746   1          // 最左边一列为大本营，显示大本营字体与剩余血量
+ 747   1          lcd_show_str(0, 2, "BASE");
+ 748   1          lcd_show_str(0, 4, "HP:");
+ 749   1          lcd_show_char(0, 5, (base_hp/10)+'0');
+ 750   1          lcd_show_char(1, 5, (base_hp%10)+'0');
+ 751   1          
+ 752   1          // 显示能量和时间
+ 753   1          lcd_show_str(10, 0, "EN:");
+ 754   1          lcd_show_char(13, 0, current_energy+'0');
+ 755   1          lcd_show_str(11, 1, "T:");
+ 756   1          lcd_show_char(13, 1, (game_time/10)+'0');
+ 757   1          lcd_show_char(14, 1, (game_time%10)+'0');
+ 758   1          
+ 759   1          // 绘制5条横线和6条竖线
+ 760   1          for(j=0; j<GRID_ROW; j++) {
+ 761   2              for(i=0; i<GRID_COL; i++) {
+ 762   3                  lcd_x = i*2 + 2; // 从第2列开始，留出左边的大本营
+ 763   3                  lcd_y = j+2;
+ 764   3                  if(lcd_x >= 16) break;
+ 765   3                  
+ 766   3                  // 绘制网格背景
+ 767   3                  lcd_show_char(lcd_x, lcd_y, ' ');
+ 768   3                  
+ 769   3                  // 绘制塔
+ 770   3                  tower_id = check_tower_at(i, j);
+ 771   3                  if(tower_id != 0xFF) {
+ 772   4                      switch(tower_list[tower_id].type) {
+ 773   5                          case TOWER_ARROW:  lcd_show_char(lcd_x, lcd_y, '-'); break;
+ 774   5                          case TOWER_TURRET: lcd_show_char(lcd_x, lcd_y, '='); break;
+ 775   5                          case TOWER_MAGIC:  lcd_show_char(lcd_x, lcd_y, '#'); break;
+ 776   5                          case TOWER_ENERGY: lcd_show_char(lcd_x, lcd_y, '*'); break;
+ 777   5                          default: break;
+ 778   5                      }
+ 779   4                      continue;
+ 780   4                  }
+ 781   3                  
+ 782   3                  // 绘制敌人
+ 783   3                  enemy_id = check_enemy_at(i, j);
+ 784   3                  if(enemy_id != 0xFF) {
+ 785   4                      if(enemy_list[enemy_id].type == ENEMY_SQUARE) 
+ 786   4                          lcd_show_char(lcd_x, lcd_y, 'O');
+ 787   4                      else 
+ 788   4                          lcd_show_char(lcd_x, lcd_y, 'X');
+ 789   4                      continue;
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 14  
+
+ 790   4                  }
+ 791   3                  
+ 792   3                  // 绘制子弹
+ 793   3                  for(b=0; b<MAX_BULLET; b++) {
+ 794   4                      if(bullet_list[b].is_active && bullet_list[b].x == i && bullet_list[b].y == j) {
+ 795   5                          lcd_show_char(lcd_x+1, lcd_y, '.');
+ 796   5                          break;
+ 797   5                      }
+ 798   4                  }
+ 799   3              }
+ 800   2          }
+ 801   1          
+ 802   1          // 绘制选择光标
+ 803   1          cursor_x = select_cursor_x*2 + 2; // 从第2列开始，留出左边的大本营
+ 804   1          cursor_y = select_cursor_y+2;
+ 805   1          if(cursor_x < 16) {
+ 806   2              lcd_show_char(cursor_x, cursor_y, '#');
+ 807   2          }
+ 808   1      }
+ 809          
+ 810          void draw_game_pause(void) {
+ 811   1          lcd_clear();
+ 812   1          lcd_show_str(5, 0, "PAUSE");
+ 813   1          lcd_show_str(2, 2, "*=CONTINUE");
+ 814   1          lcd_show_str(2, 4, "5=BACK MENU");
+ 815   1      }
+ 816          
+ 817          void draw_game_over(void) {
+*** ERROR C231 IN LINE 817 OF main.c: 'draw_game_over': redefinition
+ 818   1          lcd_clear();
+ 819   1          if(game_result == 1) 
+ 820   1              lcd_show_str(6, 0, "WIN!");
+ 821   1          else 
+ 822   1              lcd_show_str(5, 0, "LOSE!");
+ 823   1          
+ 824   1          lcd_show_str(0, 2, "KILL:");
+ 825   1          lcd_show_char(5, 2, (killed_enemy/10)+'0');
+ 826   1          lcd_show_char(6, 2, (killed_enemy%10)+'0');
+ 827   1          
+ 828   1          lcd_show_str(0, 3, "HP:");
+ 829   1          lcd_show_char(3, 3, (base_hp/10)+'0');
+ 830   1          lcd_show_char(4, 3, (base_hp%10)+'0');
+ 831   1          
+ 832   1          lcd_show_str(0, 5, "5=BACK MENU");
+ 833   1      }
+*** ERROR C231 IN LINE 833 OF main.c: 'draw_game_over': redefinition
+ 834          
+ 835          void draw_history(void) {
+ 836   1          lcd_clear();
+ 837   1          lcd_show_str(4, 0, "HISTORY");
+ 838   1          if(record_cnt == 0) {
+ 839   2              lcd_show_str(3, 3, "NO RECORD");
+ 840   2          } else {
+ 841   2              u8 i;
+ 842   2              for(i=0; i<record_cnt; i++) {
+ 843   3                  u8 line = 2 + i*2;
+ 844   3                  lcd_show_str(0, line, record_list[i].is_win ? "WIN " : "LOSE");
+ 845   3                  lcd_show_str(5, line, record_list[i].difficulty==0 ? "EASY" : (record_list[i].difficulty==1 ? 
+             -"MID " : "HARD"));
+ 846   3              }
+ 847   2          }
+ 848   1          lcd_show_str(0, 7, "*=BACK");
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 15  
+
+ 849   1      }
+ 850          
+ 851          // ==================== 按键处理 ====================
+ 852          void menu_key_handle(void) {
+ 853   1          if(game_key == 0xFF) return;
+ 854   1          switch(game_key) {
+ 855   2              case 0: if(menu_cursor>0) menu_cursor--; draw_menu(); break;
+ 856   2              case 1: if(menu_cursor<3) menu_cursor++; draw_menu(); break;
+ 857   2              case 4: 
+ 858   2                  switch(menu_cursor){
+ 859   3                      case 0: lcd_clear(); lcd_show_str(2, 0, "HOW TO PLAY");
+ 860   3                              lcd_show_str(0, 2, "1-4: UP/DOWN/LEFT/RIGHT");
+ 861   3                              lcd_show_str(0, 3, "5: SELECT");
+ 862   3                              lcd_show_str(0, 4, "*: PAUSE");
+ 863   3                              lcd_show_str(0, 6, "5=BACK");
+ 864   3                              while(game_key != 4) {
+ 865   4                                  key_scan();
+ 866   4                                  delay_ms(10);
+ 867   4                              }
+ 868   3                              game_key = 0xFF;
+ 869   3                              draw_menu();
+ 870   3                              break;
+ 871   3                      case 1: game_state=STATE_HISTORY; draw_history(); break;
+ 872   3                      case 2: menu_cursor=0; game_state=STATE_DIFF_SELECT; draw_diff_select(); break;
+ 873   3                      case 3: lcd_clear(); lcd_show_str(3, 0, "EXIT"); while(1); break;
+ 874   3                  }
+ 875   2                  break;
+ 876   2          }
+ 877   1          game_key=0xFF;
+ 878   1      }
+ 879          
+ 880          void diff_select_key_handle(void) {
+ 881   1          if(game_key==0xFF) return;
+ 882   1          switch(game_key){
+ 883   2              case 0: if(menu_cursor>0) menu_cursor--; draw_diff_select(); break;
+ 884   2              case 1: if(menu_cursor<2) menu_cursor++; draw_diff_select(); break;
+ 885   2              case 4: current_diff=menu_cursor; menu_cursor=0; game_state=STATE_MAP_SELECT; draw_map_select(); b
+             -reak;
+ 886   2              case 9: menu_cursor=0; game_state=STATE_MENU; draw_menu(); break;
+ 887   2          }
+ 888   1          game_key=0xFF;
+ 889   1      }
+ 890          
+ 891          void map_select_key_handle(void) {
+ 892   1          if(game_key==0xFF) return;
+ 893   1          switch(game_key){
+ 894   2              case 0: if(menu_cursor>0) menu_cursor--; draw_map_select(); break;
+ 895   2              case 1: if(menu_cursor<1) menu_cursor++; draw_map_select(); break;
+ 896   2              case 4: current_map=menu_cursor; game_init(); game_state=STATE_GAME_RUN; break;
+ 897   2              case 9: menu_cursor=0; game_state=STATE_MENU; draw_menu(); break;
+ 898   2          }
+ 899   1          game_key=0xFF;
+ 900   1      }
+ 901          
+ 902          void game_run_key_handle(void) {
+ 903   1          if(game_key==0xFF) return;
+ 904   1          switch(game_key){
+ 905   2              case 0: if(select_cursor_y>0) select_cursor_y--; refresh_flag=1; break;
+ 906   2              case 1: if(select_cursor_y<GRID_ROW-1) select_cursor_y++; refresh_flag=1; break;
+ 907   2              case 2: if(select_cursor_x>0) select_cursor_x--; refresh_flag=1; break;
+ 908   2              case 3: if(select_cursor_x<GRID_COL-1) select_cursor_x++; refresh_flag=1; break;
+ 909   2              case 4: {
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 16  
+
+ 910   3                  u8 tower_slot=find_empty_tower();
+ 911   3                  if(tower_slot==0xFF) break;
+ 912   3                  if(current_energy < tower_attr[select_tower_type].cost) break;
+ 913   3                  if(check_tower_at(select_cursor_x, select_cursor_y) != 0xFF) break;
+ 914   3                  tower_list[tower_slot].type=select_tower_type;
+ 915   3                  tower_list[tower_slot].x=select_cursor_x;
+ 916   3                  tower_list[tower_slot].y=select_cursor_y;
+ 917   3                  tower_list[tower_slot].current_hp = tower_attr[select_tower_type].hp;
+ 918   3                  tower_list[tower_slot].current_cd = 0;
+ 919   3                  current_energy -= tower_attr[select_tower_type].cost;
+ 920   3                  refresh_flag=1;
+ 921   3                  break;
+ 922   3              }
+ 923   2              case 5: select_tower_type=TOWER_ARROW; break;
+ 924   2              case 6: select_tower_type=TOWER_TURRET; break;
+ 925   2              case 7: select_tower_type=TOWER_MAGIC; break;
+ 926   2              case 8: select_tower_type=TOWER_ENERGY; break;
+ 927   2              case 9: game_state=STATE_GAME_PAUSE; draw_game_pause(); break;
+ 928   2          }
+ 929   1          game_key=0xFF;
+ 930   1      }
+ 931          
+ 932          void game_pause_key_handle(void) {
+ 933   1          if(game_key == 0xFF) return;
+ 934   1          switch(game_key) {
+ 935   2              case 9: game_state=STATE_GAME_RUN; refresh_flag=1; break;
+ 936   2              case 4: game_state=STATE_MENU; menu_cursor=0; draw_menu(); break;
+ 937   2          }
+ 938   1          game_key=0xFF;
+ 939   1      }
+ 940          
+ 941          void game_over_key_handle(void) {
+ 942   1          if(game_key == 4) {
+ 943   2              game_state=STATE_MENU;
+ 944   2              menu_cursor=0;
+ 945   2              draw_menu();
+ 946   2          }
+ 947   1          game_key=0xFF;
+ 948   1      }
+ 949          
+ 950          void history_key_handle(void) {
+ 951   1          if(game_key == 9) {
+ 952   2              game_state=STATE_MENU;
+ 953   2              menu_cursor=0;
+ 954   2              draw_menu();
+ 955   2          }
+ 956   1          game_key=0xFF;
+ 957   1      }
+ 958          
+ 959          // ==================== 定时器初始化 ====================
+ 960          void timer0_init(void) {
+ 961   1          TMOD |= 0x01;
+ 962   1          TH0 = (65536 - 16667) / 256; // 12MHz晶振，20ms中断
+ 963   1          TL0 = (65536 - 16667) % 256;
+ 964   1          ET0 = 1;
+ 965   1          EA = 1;
+ 966   1          TR0 = 1;
+ 967   1      }
+ 968          
+ 969          // ==================== 中断服务函数 ====================
+ 970          void timer0_isr(void) interrupt 1 {
+ 971   1          TH0 = (65536 - 16667) / 256;
+C51 COMPILER V9.54   MAIN                                                                  04/16/2026 12:28:23 PAGE 17  
+
+ 972   1          TL0 = (65536 - 16667) % 256;
+ 973   1          game_tick++;
+ 974   1          if(game_tick%50==0) game_time++;
+ 975   1          if(game_state==STATE_GAME_RUN){
+ 976   2              enemy_spawn();
+ 977   2              tower_attack();
+ 978   2              bullet_update();
+ 979   2              enemy_update();
+ 980   2              game_over_check();
+ 981   2              refresh_flag=1;
+ 982   2          }
+ 983   1      }
+ 984          
+ 985          // ==================== 主函数 ====================
+ 986          void main(void) {
+ 987   1          // 端口初始化
+ 988   1          P0 = 0xFF;
+ 989   1          P1 = 0xFF;
+ 990   1          P2 = 0xFF;
+ 991   1          P3 = 0xFF;
+ 992   1          BUZZER = 1;  // 关闭蜂鸣器
+ 993   1      
+ 994   1          // 外设初始化
+ 995   1          lcd_init();
+ 996   1          timer0_init();
+ 997   1          delay_ms(1000);
+ 998   1      
+ 999   1          // 初始界面
+1000   1          draw_menu();
+1001   1      
+1002   1          // 主循环
+1003   1          while(1) {
+1004   2              key_scan();
+1005   2      
+1006   2              switch(game_state) {
+1007   3                  case STATE_MENU:        menu_key_handle(); break;
+1008   3                  case STATE_DIFF_SELECT: diff_select_key_handle(); break;
+1009   3                  case STATE_MAP_SELECT:  map_select_key_handle(); break;
+1010   3                  case STATE_GAME_RUN:    
+1011   3                      game_run_key_handle(); 
+1012   3                      if(refresh_flag){
+1013   4                          draw_game_screen();
+1014   4                          refresh_flag=0;
+1015   4                      } 
+1016   3                      break;
+1017   3                  case STATE_GAME_PAUSE:  game_pause_key_handle(); break;
+1018   3                  case STATE_GAME_OVER:   game_over_key_handle(); break;
+1019   3                  case STATE_HISTORY:     history_key_handle(); break;
+1020   3              }
+1021   2      
+1022   2              delay_ms(10);
+1023   2          }
+1024   1      }
+
+C51 COMPILATION COMPLETE.  3 WARNING(S),  4 ERROR(S)

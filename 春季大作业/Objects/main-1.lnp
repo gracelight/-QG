@@ -1,0 +1,9 @@
+".\Objects\main-1.obj",
+".\Objects\game.obj",
+".\Objects\LCD12864.obj",
+".\Objects\keypad.obj",
+".\Objects\sound.obj",
+".\Objects\config.obj",
+".\Objects\eeprom.obj" 
+TO ".\Objects\main-1" 
+PRINT(".\Listings\main-1.m51")

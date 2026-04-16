@@ -1,0 +1,118 @@
+C51 COMPILER V9.54   MAIN_1                                                                04/16/2026 20:30:18 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN_1
+OBJECT MODULE PLACED IN main-1.OBJ
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.exe main-1.c
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "lcd12864.h"
+   3          #include "keypad.h"
+   4          #include "sound.h"
+   5          #include "game.h"
+   6          #include "eeprom.h"
+   7          
+   8          volatile u8 sysTick = 0;
+   9          
+  10          // T0?? - 10ms????
+  11          void Timer0_ISR(void) interrupt 1 {
+  12   1          TH0 = (65536 - 10000) / 256;  // 12MHz, 10ms
+  13   1          TL0 = (65536 - 10000) % 256;
+  14   1          sysTick++;
+  15   1          Sound_Tick();  // ??????
+  16   1      }
+  17          
+  18          // ??????
+  19          void Menu_Draw(void) {
+  20   1          LCD_Clear();
+  21   1          // ????
+  22   1          LCD_DisplayString(20, 0, "Tower Defense");
+  23   1          LCD_DisplayString(10, 2, "1.Start Game");
+  24   1          LCD_DisplayString(10, 3, "2.High Score");
+  25   1          LCD_DisplayString(10, 4, "3.Difficulty");
+  26   1      }
+  27          
+  28          // ????
+  29          void Menu_Process(void) {
+  30   1          u8 key = Key_GetPressed();
+  31   1          static u8 menuItem = 0;
+  32   1          
+  33   1          if(key == KEY_UP && menuItem > 0) menuItem--;
+  34   1          if(key == KEY_DOWN && menuItem < 2) menuItem++;
+  35   1          if(key == KEY_OK) {
+  36   2              switch(menuItem) {
+  37   3                  case 0: Game_Init(); break;
+  38   3                  case 1: /* ????? */ break;
+  39   3                  case 2: /* ???? */ break;
+  40   3              }
+  41   2          }
+  42   1      }
+  43          
+  44          // ????
+  45          void Pause_Process(void) {
+  46   1          if(Key_GetPressed() == KEY_PAUSE) {
+  47   2              gameState = GAME_RUNNING;
+  48   2          }
+  49   1      }
+  50          
+  51          // ????
+  52          void GameOver_Process(void) {
+  53   1          u8 key = Key_GetPressed();
+  54   1          if(key == KEY_OK) {
+  55   2              gameState = GAME_MENU;
+C51 COMPILER V9.54   MAIN_1                                                                04/16/2026 20:30:18 PAGE 2   
+
+  56   2              Menu_Draw();
+  57   2          } else if(key == KEY_CANCEL) {
+  58   2              // ????????
+  59   2          }
+  60   1      }
+  61          
+  62          void main(void) {
+  63   1          // ??????
+  64   1          TMOD = 0x21;  // T0??1, T1??2
+  65   1          TH0 = (65536 - 10000) / 256;
+  66   1          TL0 = (65536 - 10000) % 256;
+  67   1          ET0 = 1;
+  68   1          TR0 = 1;
+  69   1          EA = 1;
+  70   1          
+  71   1          LCD_Init();
+  72   1          Sound_Init();
+  73   1          
+  74   1          Menu_Draw();
+  75   1          gameState = GAME_MENU;
+  76   1          
+  77   1          while(1) {
+  78   2              switch(gameState) {
+  79   3                  case GAME_MENU:
+  80   3                      Menu_Process();
+  81   3                      break;
+  82   3                  case GAME_RUNNING:
+  83   3                      Game_Process();
+  84   3                      break;
+  85   3                  case GAME_PAUSED:
+  86   3                      Pause_Process();
+  87   3                      break;
+  88   3                  case GAME_OVER:
+  89   3                      GameOver_Process();
+  90   3                      break;
+  91   3              }
+  92   2          }
+  93   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    245    ----
+   CONSTANT SIZE    =     53    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

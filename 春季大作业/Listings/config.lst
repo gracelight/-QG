@@ -1,0 +1,24 @@
+C51 COMPILER V9.54   CONFIG                                                                04/16/2026 20:49:28 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE CONFIG
+OBJECT MODULE PLACED IN .\Objects\config.obj
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.EXE config.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\confi
+                    -g.lst) TABS(2) OBJECT(.\Objects\config.obj)
+
+line level    source
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

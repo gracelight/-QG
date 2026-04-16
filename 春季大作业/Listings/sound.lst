@@ -1,0 +1,85 @@
+C51 COMPILER V9.54   SOUND                                                                 04/16/2026 20:49:28 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE SOUND
+OBJECT MODULE PLACED IN .\Objects\sound.obj
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.EXE sound.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\sound.
+                    -lst) TABS(2) OBJECT(.\Objects\sound.obj)
+
+line level    source
+
+   1          #include "sound.h"
+   2          
+   3          // 12MHz??????????????(???1,??2)
+   4          static u8 code freqTable[][2] = {
+   5              {0xFC, 0x66},  // 262Hz (C4) - ???
+   6              {0xFE, 0x33},  // 523Hz (C5) - ???
+   7              {0xFD, 0x80},  // 349Hz (F4) - ???
+   8              {0xFD, 0x34},  // 392Hz (G4) - ????
+   9              {0xFB, 0xE8}   // 220Hz (A3) - ????
+  10          };
+  11          
+  12          static u8 soundPlaying = 0;
+  13          static u8 soundTimer = 0;
+  14          static u8 soundDuration = 0;
+  15          static SoundType currentSound = SOUND_NONE;
+  16          
+  17          void Sound_Init(void) {
+  18   1          TMOD |= 0x20;  // T1??2(8?????)
+  19   1          BEEP = 0;
+  20   1      }
+  21          
+  22          void Sound_Play(SoundType type) {
+  23   1          if(type >= sizeof(freqTable)/2) return;
+  24   1          
+  25   1          currentSound = type;
+  26   1          soundPlaying = 1;
+  27   1          soundDuration = 15;  // 150ms
+  28   1          soundTimer = 0;
+  29   1          
+  30   1          // ????
+  31   1          TH1 = freqTable[type][0];
+  32   1          TL1 = freqTable[type][1];
+  33   1          TR1 = 1;
+  34   1          ET1 = 1;
+  35   1          EA = 1;
+  36   1      }
+  37          
+  38          void Sound_Stop(void) {
+  39   1          TR1 = 0;
+  40   1          ET1 = 0;
+  41   1          BEEP = 0;
+  42   1          soundPlaying = 0;
+  43   1          currentSound = SOUND_NONE;
+  44   1      }
+  45          
+  46          // ?T1??????????
+  47          void Timer1_ISR(void) interrupt 3 {
+  48   1          BEEP = ~BEEP;
+  49   1      }
+  50          
+  51          // ????????,??????
+  52          void Sound_Tick(void) {
+  53   1          if(soundPlaying) {
+  54   2              soundTimer++;
+C51 COMPILER V9.54   SOUND                                                                 04/16/2026 20:49:28 PAGE 2   
+
+  55   2              if(soundTimer >= soundDuration) {
+  56   3                  Sound_Stop();
+  57   3              }
+  58   2          }
+  59   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =     95    ----
+   CONSTANT SIZE    =     10    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      4    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

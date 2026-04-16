@@ -1,0 +1,24 @@
+C51 COMPILER V9.54   FRONT                                                                 04/16/2026 20:05:06 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE FRONT
+OBJECT MODULE PLACED IN .\Objects\front.obj
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.EXE front.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\front.
+                    -lst) TABS(2) OBJECT(.\Objects\front.obj)
+
+line level    source
+
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =   ----    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

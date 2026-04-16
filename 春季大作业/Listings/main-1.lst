@@ -1,0 +1,190 @@
+C51 COMPILER V9.54   MAIN_1                                                                04/16/2026 21:43:56 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE MAIN_1
+OBJECT MODULE PLACED IN .\Objects\main-1.obj
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.EXE main-1.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\main-
+                    -1.lst) TABS(2) OBJECT(.\Objects\main-1.obj)
+
+line level    source
+
+   1          /*********************************************************
+   2          * 工程：51单片机塔防/小游戏主程序
+   3          * 硬件：AMPIRE128x64 LCD、矩阵键盘、蜂鸣器、EEPROM
+   4          * 功能：菜单显示、游戏状态管理、定时器中断、按键处理
+   5          **********************************************************/
+   6          
+   7          // 包含各模块驱动头文件
+   8          #include "config.h"       // 系统配置文件（引脚、宏定义）
+   9          #include "lcd12864.h"     // AMPIRE12864液晶驱动
+  10          #include "keypad.h"       // 矩阵键盘驱动
+  11          #include "sound.h"        // 蜂鸣器/音效驱动
+  12          #include "game.h"         // 游戏逻辑核心
+  13          #include "eeprom.h"       // 掉电存储（高分记录）
+  14          #include "font.h"         // 字模库（中文/英文点阵）
+  15          
+  16          // 全局系统节拍计数器（volatile防止编译器优化，中断中使用）
+  17          volatile u8 sysTick = 0;
+  18          
+  19          /*********************************************************
+  20          * 函数名：Timer0_ISR
+  21          * 功能  ：定时器0中断服务函数，10ms定时中断
+  22          * 输入  ：无
+  23          * 输出  ：无
+  24          * 备注  ：12MHz晶振，定时10ms，用于系统计时+音效驱动
+  25          **********************************************************/
+  26          void Timer0_ISR(void) interrupt 1 {
+  27   1          // 重装定时器初值，保证10ms精准定时
+  28   1          TH0 = (65536 - 10000) / 256;
+  29   1          TL0 = (65536 - 10000) % 256;
+  30   1          
+  31   1          sysTick++;  // 系统节拍+1（每10ms加1）
+  32   1          Sound_Tick();  // 蜂鸣器节拍驱动（处理音效播放）
+  33   1      }
+  34          
+  35          /*********************************************************
+  36          * 函数名：Menu_Draw
+  37          * 功能  ：绘制主菜单界面（LCD初始化显示）
+  38          * 输入  ：无
+  39          * 输出  ：无
+  40          **********************************************************/
+  41          void Menu_Draw(void) {
+  42   1          LCD_Clear();  // 清屏
+  43   1          
+  44   1          // ===== 第一行：显示游戏标题 "TFGAME" =====
+  45   1          LCD_DrawBitmap16x16(10, 0, (u8*)custom_chars[0]);  // 显示字符 T
+  46   1          LCD_DrawBitmap16x16(30, 0, (u8*)custom_chars[1]);  // 显示字符 F
+  47   1          LCD_DrawBitmap16x16(50, 0, (u8*)custom_chars[2]);  // 显示字符 G
+  48   1          LCD_DrawBitmap16x16(70, 0, (u8*)custom_chars[3]);  // 显示字符 A
+  49   1          LCD_DrawBitmap16x16(90, 0, (u8*)custom_chars[4]);  // 显示字符 M
+  50   1          LCD_DrawBitmap16x16(110, 0, (u8*)custom_chars[5]); // 显示字符 E
+  51   1          
+  52   1          // ===== 第二~四行：显示菜单选项 =====
+  53   1          LCD_DisplayString(10, 2, "1.Start Game");    // 选项1：开始游戏
+  54   1          LCD_DisplayString(10, 3, "2.High Score");    // 选项2：最高分记录
+C51 COMPILER V9.54   MAIN_1                                                                04/16/2026 21:43:56 PAGE 2   
+
+  55   1          LCD_DisplayString(10, 4, "3.Difficulty");    // 选项3：难度设置
+  56   1          
+  57   1          // ===== 显示中文：历史记录 =====
+  58   1          LCD_DrawBitmap16x16(10, 40, (u8*)history_chars[0]);  // 历
+  59   1          LCD_DrawBitmap16x16(30, 40, (u8*)history_chars[1]);  // 史
+  60   1          LCD_DrawBitmap16x16(50, 40, (u8*)history_chars[2]);  // 记
+  61   1          LCD_DrawBitmap16x16(70, 40, (u8*)history_chars[3]);  // 录
+  62   1          
+  63   1          // ===== 显示中文：游戏说明 =====
+  64   1          LCD_DrawBitmap16x16(10, 56, (u8*)game_desc_chars[0]); // 游
+  65   1          LCD_DrawBitmap16x16(30, 56, (u8*)game_desc_chars[1]); // 戏
+  66   1          LCD_DrawBitmap16x16(50, 56, (u8*)game_desc_chars[2]); // 说
+  67   1          LCD_DrawBitmap16x16(70, 56, (u8*)game_desc_chars[3]); // 明
+  68   1      }
+  69          
+  70          /*********************************************************
+  71          * 函数名：Menu_Process
+  72          * 功能  ：菜单界面按键处理（上下选择+确认）
+  73          * 输入  ：无
+  74          * 输出  ：无
+  75          **********************************************************/
+  76          void Menu_Process(void) {
+  77   1          u8 key = Key_GetPressed();               // 读取按键值
+  78   1          static u8 menuItem = 0;                  // 静态变量：记录当前选中的菜单项
+  79   1          
+  80   1          if(key == KEY_UP && menuItem > 0)        // 按下上键：选项上移（不越界）
+  81   1              menuItem--;
+  82   1          if(key == KEY_DOWN && menuItem < 2)      // 按下下键：选项下移（不越界）
+  83   1              menuItem++;
+  84   1          if(key == KEY_OK) {                      // 按下确认键：执行对应功能
+  85   2              switch(menuItem) {
+  86   3                  case 0: Game_Init(); break;       // 选中第1项：初始化并开始游戏
+  87   3                  case 1: break;                   // 选中第2项：查看最高分（待完善）
+  88   3                  case 2: break;                   // 选中第3项：设置难度（待完善）
+  89   3              }
+  90   2          }
+  91   1      }
+  92          
+  93          /*********************************************************
+  94          * 函数名：Pause_Process
+  95          * 功能  ：游戏暂停状态处理
+  96          * 输入  ：无
+  97          * 输出  ：无
+  98          **********************************************************/
+  99          void Pause_Process(void) {
+ 100   1          // 按下暂停键：恢复游戏运行状态
+ 101   1          if(Key_GetPressed() == KEY_PAUSE) {
+ 102   2              gameState = GAME_RUNNING;
+ 103   2          }
+ 104   1      }
+ 105          
+ 106          /*********************************************************
+ 107          * 函数名：GameOver_Process
+ 108          * 功能  ：游戏结束状态处理
+ 109          * 输入  ：无
+ 110          * 输出  ：无
+ 111          **********************************************************/
+ 112          void GameOver_Process(void) {
+ 113   1          u8 key = Key_GetPressed();
+ 114   1          if(key == KEY_OK) {              // 按下确认键：返回主菜单
+ 115   2              gameState = GAME_MENU;
+ 116   2              Menu_Draw();                 // 重新绘制菜单界面
+C51 COMPILER V9.54   MAIN_1                                                                04/16/2026 21:43:56 PAGE 3   
+
+ 117   2          } else if(key == KEY_CANCEL) {
+ 118   2              // 按下取消键：功能待扩展
+ 119   2          }
+ 120   1      }
+ 121          
+ 122          /*********************************************************
+ 123          * 函数名：main
+ 124          * 功能  ：主函数，系统入口
+ 125          * 输入  ：无
+ 126          * 输出  ：无
+ 127          **********************************************************/
+ 128          void main(void) {
+ 129   1          // 定时器初始化
+ 130   1          TMOD = 0x21;  // T0工作模式1（16位定时），T1工作模式2
+ 131   1          // 定时器0初值（10ms）
+ 132   1          TH0 = (65536 - 10000) / 256;
+ 133   1          TL0 = (65536 - 10000) % 256;
+ 134   1          ET0 = 1;      // 使能定时器0中断
+ 135   1          TR0 = 1;      // 启动定时器0
+ 136   1          EA  = 1;      // 开启总中断
+ 137   1          
+ 138   1          // 外设初始化
+ 139   1          LCD_Init();    // AMPIRE12864液晶初始化
+ 140   1          Sound_Init();  // 蜂鸣器初始化
+ 141   1          
+ 142   1          Menu_Draw();          // 绘制主菜单
+ 143   1          gameState = GAME_MENU;// 设置初始状态：菜单模式
+ 144   1          
+ 145   1          // 主循环：根据游戏状态执行对应逻辑
+ 146   1          while(1) {
+ 147   2              switch(gameState) {
+ 148   3                  case GAME_MENU:     // 菜单状态
+ 149   3                      Menu_Process();
+ 150   3                      break;
+ 151   3                  case GAME_RUNNING:  // 游戏运行状态
+ 152   3                      Game_Process();
+ 153   3                      break;
+ 154   3                  case GAME_PAUSED:   // 游戏暂停状态
+ 155   3                      Pause_Process();
+ 156   3                      break;
+ 157   3                  case GAME_OVER:     // 游戏结束状态
+ 158   3                      GameOver_Process();
+ 159   3                      break;
+ 160   3              }
+ 161   2          }
+ 162   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    414    ----
+   CONSTANT SIZE    =     39    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =      2    ----
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  0 WARNING(S),  0 ERROR(S)

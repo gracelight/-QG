@@ -1,0 +1,315 @@
+BL51 BANKED LINKER/LOCATER V6.22                                                        04/16/2026  11:30:33  PAGE 1
+
+
+BL51 BANKED LINKER/LOCATER V6.22, INVOKED BY:
+D:\KEIL\C51\BIN\BL51.EXE MAIN.OBJ
+
+
+MEMORY MODEL: SMALL
+
+
+INPUT MODULES INCLUDED:
+  MAIN.OBJ (MAIN)
+  D:\KEIL\C51\LIB\C51S.LIB (?C_STARTUP)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?COPY)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?CLDPTR)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?IMUL)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?UIDIV)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?LMUL)
+  D:\KEIL\C51\LIB\C51S.LIB (?C?CCASE)
+  D:\KEIL\C51\LIB\C51S.LIB (?C_INIT)
+
+
+LINK MAP OF MODULE:  MAIN (MAIN)
+
+
+            TYPE    BASE      LENGTH    RELOCATION   SEGMENT NAME
+            -----------------------------------------------------
+
+            * * * * * * *   D A T A   M E M O R Y   * * * * * * *
+            REG     0000H     0008H     ABSOLUTE     "REG BANK 0"
+            DATA    0008H     0016H     UNIT         ?DT?MAIN
+            DATA    001EH     0016H     UNIT         _DATA_GROUP_
+            IDATA   0034H     0001H     UNIT         ?STACK
+
+            * * * * * * *  X D A T A   M E M O R Y  * * * * * * *
+            XDATA   0000H     00C6H     UNIT         ?XD?MAIN
+
+            * * * * * * *   C O D E   M E M O R Y   * * * * * * *
+            CODE    0000H     0003H     ABSOLUTE     
+                    0003H     0008H                  *** GAP ***
+            CODE    000BH     0003H     ABSOLUTE     
+            CODE    000EH     04A4H     UNIT         ?CO?MAIN
+            CODE    04B2H     022DH     UNIT         ?PR?TOWER_ATTACK?MAIN
+            CODE    06DFH     01EBH     UNIT         ?C?LIB_CODE
+            CODE    08CAH     019BH     UNIT         ?PR?DRAW_GAME_SCREEN?MAIN
+            CODE    0A65H     0170H     UNIT         ?PR?ENEMY_UPDATE?MAIN
+            CODE    0BD5H     0143H     UNIT         ?PR?GAME_RUN_KEY_HANDLE?MAIN
+            CODE    0D18H     0131H     UNIT         ?PR?ENEMY_SPAWN?MAIN
+            CODE    0E49H     0106H     UNIT         ?PR?BULLET_UPDATE?MAIN
+            CODE    0F4FH     00C1H     UNIT         ?PR?GAME_INIT?MAIN
+            CODE    1010H     00BAH     UNIT         ?PR?MENU_KEY_HANDLE?MAIN
+            CODE    10CAH     00B6H     UNIT         ?PR?KEY_SCAN?MAIN
+            CODE    1180H     00AEH     UNIT         ?PR?_LCD_SHOW_CHAR?MAIN
+            CODE    122EH     009DH     UNIT         ?PR?DRAW_HISTORY?MAIN
+            CODE    12CBH     008CH     UNIT         ?C_C51STARTUP
+            CODE    1357H     007FH     UNIT         ?PR?DRAW_GAME_OVER?MAIN
+            CODE    13D6H     007BH     UNIT         ?PR?MAIN?MAIN
+            CODE    1451H     0073H     UNIT         ?PR?TIMER0_ISR?MAIN
+            CODE    14C4H     0070H     UNIT         ?PR?DRAW_MENU?MAIN
+            CODE    1534H     0059H     UNIT         ?PR?DRAW_DIFF_SELECT?MAIN
+            CODE    158DH     0049H     UNIT         ?PR?DIFF_SELECT_KEY_HANDLE?MAIN
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/16/2026  11:30:33  PAGE 2
+
+
+            CODE    15D6H     0048H     UNIT         ?PR?_RAND_NUM?MAIN
+            CODE    161EH     0044H     UNIT         ?PR?MAP_SELECT_KEY_HANDLE?MAIN
+            CODE    1662H     0041H     UNIT         ?PR?_CHECK_TOWER_AT?MAIN
+            CODE    16A3H     0041H     UNIT         ?PR?_CHECK_ENEMY_AT?MAIN
+            CODE    16E4H     003DH     UNIT         ?C_INITSEG
+            CODE    1721H     003CH     UNIT         ?PR?_LCD_SHOW_STR?MAIN
+            CODE    175DH     003BH     UNIT         ?PR?DRAW_MAP_SELECT?MAIN
+            CODE    1798H     0037H     UNIT         ?PR?SAVE_RECORD?MAIN
+            CODE    17CFH     0034H     UNIT         ?PR?GAME_OVER_CHECK?MAIN
+            CODE    1803H     0032H     UNIT         ?PR?_LCD_WRITE_DATA?MAIN
+            CODE    1835H     002AH     UNIT         ?PR?DRAW_GAME_PAUSE?MAIN
+            CODE    185FH     0029H     UNIT         ?PR?_LCD_SET_POS?MAIN
+            CODE    1888H     0023H     UNIT         ?PR?LCD_INIT?MAIN
+            CODE    18ABH     0023H     UNIT         ?PR?LCD_CLEAR?MAIN
+            CODE    18CEH     0020H     UNIT         ?PR?_DELAY_MS?MAIN
+            CODE    18EEH     001EH     UNIT         ?PR?GAME_PAUSE_KEY_HANDLE?MAIN
+            CODE    190CH     001CH     UNIT         ?PR?_DELAY_10US?MAIN
+            CODE    1928H     001BH     UNIT         ?PR?FIND_EMPTY_TOWER?MAIN
+            CODE    1943H     001BH     UNIT         ?PR?FIND_EMPTY_ENEMY?MAIN
+            CODE    195EH     001BH     UNIT         ?PR?FIND_EMPTY_BULLET?MAIN
+            CODE    1979H     0018H     UNIT         ?PR?_LCD_SELECT_SCREEN?MAIN
+            CODE    1991H     0015H     UNIT         ?PR?_LCD_WRITE_CMD?MAIN
+            CODE    19A6H     0010H     UNIT         ?PR?TIMER0_INIT?MAIN
+            CODE    19B6H     000CH     UNIT         ?PR?GAME_OVER_KEY_HANDLE?MAIN
+            CODE    19C2H     000CH     UNIT         ?PR?HISTORY_KEY_HANDLE?MAIN
+
+
+
+OVERLAY MAP OF MODULE:   MAIN (MAIN)
+
+
+SEGMENT                                   DATA_GROUP 
+  +--> CALLED SEGMENT                   START    LENGTH
+-------------------------------------------------------
+?PR?TIMER0_ISR?MAIN                     -----    -----
+  +--> ?PR?ENEMY_SPAWN?MAIN
+  +--> ?PR?TOWER_ATTACK?MAIN
+  +--> ?PR?BULLET_UPDATE?MAIN
+  +--> ?PR?ENEMY_UPDATE?MAIN
+  +--> ?PR?GAME_OVER_CHECK?MAIN
+
+?PR?ENEMY_SPAWN?MAIN                    001EH    0003H
+  +--> ?CO?MAIN
+  +--> ?PR?FIND_EMPTY_ENEMY?MAIN
+  +--> ?PR?_RAND_NUM?MAIN
+
+?PR?_RAND_NUM?MAIN                      0021H    0002H
+
+?PR?TOWER_ATTACK?MAIN                   -----    -----
+  +--> ?PR?FIND_EMPTY_BULLET?MAIN
+  +--> ?CO?MAIN
+
+?PR?BULLET_UPDATE?MAIN                  -----    -----
+  +--> ?PR?_CHECK_ENEMY_AT?MAIN
+
+?PR?ENEMY_UPDATE?MAIN                   -----    -----
+  +--> ?PR?_CHECK_TOWER_AT?MAIN
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/16/2026  11:30:33  PAGE 3
+
+
+  +--> ?CO?MAIN
+
+?PR?GAME_OVER_CHECK?MAIN                -----    -----
+  +--> ?PR?DRAW_GAME_OVER?MAIN
+  +--> ?CO?MAIN
+
+?PR?DRAW_GAME_OVER?MAIN                 -----    -----
+  +--> ?PR?SAVE_RECORD?MAIN
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+  +--> ?PR?_LCD_SHOW_CHAR?MAIN
+
+?PR?LCD_CLEAR?MAIN                      -----    -----
+  +--> ?PR?_LCD_SELECT_SCREEN?MAIN
+  +--> ?PR?_LCD_WRITE_CMD?MAIN
+  +--> ?PR?_LCD_WRITE_DATA?MAIN
+
+?PR?_LCD_WRITE_CMD?MAIN                 -----    -----
+  +--> ?PR?_DELAY_10US?MAIN
+
+?PR?_LCD_WRITE_DATA?MAIN                -----    -----
+  +--> ?CO?MAIN
+  +--> ?PR?_DELAY_10US?MAIN
+
+?PR?_LCD_SHOW_STR?MAIN                  0029H    0005H
+  +--> ?PR?_LCD_SHOW_CHAR?MAIN
+
+?PR?_LCD_SHOW_CHAR?MAIN                 002EH    0003H
+  +--> ?PR?_LCD_SET_POS?MAIN
+  +--> ?PR?_LCD_WRITE_DATA?MAIN
+
+?PR?_LCD_SET_POS?MAIN                   -----    -----
+  +--> ?PR?_LCD_SELECT_SCREEN?MAIN
+  +--> ?PR?_LCD_WRITE_CMD?MAIN
+
+*** NEW ROOT ***************************************************
+
+?C_C51STARTUP                           -----    -----
+  +--> ?PR?MAIN?MAIN
+  +--> ?C_INITSEG
+
+?PR?MAIN?MAIN                           -----    -----
+  +--> ?PR?LCD_INIT?MAIN
+  +--> ?PR?TIMER0_INIT?MAIN
+  +--> ?PR?_DELAY_MS?MAIN
+  +--> ?PR?DRAW_MENU?MAIN
+  +--> ?PR?KEY_SCAN?MAIN
+  +--> ?PR?MENU_KEY_HANDLE?MAIN
+  +--> ?PR?DIFF_SELECT_KEY_HANDLE?MAIN
+  +--> ?PR?MAP_SELECT_KEY_HANDLE?MAIN
+  +--> ?PR?GAME_RUN_KEY_HANDLE?MAIN
+  +--> ?PR?DRAW_GAME_SCREEN?MAIN
+  +--> ?PR?GAME_PAUSE_KEY_HANDLE?MAIN
+  +--> ?PR?GAME_OVER_KEY_HANDLE?MAIN
+  +--> ?PR?HISTORY_KEY_HANDLE?MAIN
+
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/16/2026  11:30:33  PAGE 4
+
+
+?PR?LCD_INIT?MAIN                       -----    -----
+  +--> ?PR?_DELAY_MS?MAIN
+  +--> ?PR?_LCD_SELECT_SCREEN?MAIN
+  +--> ?PR?_LCD_WRITE_CMD?MAIN
+  +--> ?PR?LCD_CLEAR?MAIN
+
+?PR?DRAW_MENU?MAIN                      -----    -----
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+
+?PR?KEY_SCAN?MAIN                       0026H    000EH
+  +--> ?CO?MAIN
+  +--> ?PR?_DELAY_MS?MAIN
+
+?PR?MENU_KEY_HANDLE?MAIN                -----    -----
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+  +--> ?PR?KEY_SCAN?MAIN
+  +--> ?PR?_DELAY_MS?MAIN
+  +--> ?PR?DRAW_MENU?MAIN
+  +--> ?PR?DRAW_HISTORY?MAIN
+  +--> ?PR?DRAW_DIFF_SELECT?MAIN
+
+?PR?DRAW_HISTORY?MAIN                   0026H    0002H
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+
+?PR?DRAW_DIFF_SELECT?MAIN               -----    -----
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+
+?PR?DIFF_SELECT_KEY_HANDLE?MAIN         -----    -----
+  +--> ?PR?DRAW_DIFF_SELECT?MAIN
+  +--> ?PR?DRAW_MAP_SELECT?MAIN
+  +--> ?PR?DRAW_MENU?MAIN
+
+?PR?DRAW_MAP_SELECT?MAIN                -----    -----
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+
+?PR?MAP_SELECT_KEY_HANDLE?MAIN          -----    -----
+  +--> ?PR?DRAW_MAP_SELECT?MAIN
+  +--> ?PR?GAME_INIT?MAIN
+  +--> ?PR?DRAW_GAME_SCREEN?MAIN
+  +--> ?PR?DRAW_DIFF_SELECT?MAIN
+
+?PR?GAME_INIT?MAIN                      -----    -----
+  +--> ?CO?MAIN
+
+?PR?DRAW_GAME_SCREEN?MAIN               0026H    0003H
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/16/2026  11:30:33  PAGE 5
+
+
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+  +--> ?PR?_LCD_SHOW_CHAR?MAIN
+  +--> ?PR?_CHECK_TOWER_AT?MAIN
+  +--> ?PR?_CHECK_ENEMY_AT?MAIN
+
+?PR?GAME_RUN_KEY_HANDLE?MAIN            -----    -----
+  +--> ?PR?_CHECK_TOWER_AT?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?FIND_EMPTY_TOWER?MAIN
+  +--> ?PR?DRAW_GAME_PAUSE?MAIN
+
+?PR?DRAW_GAME_PAUSE?MAIN                -----    -----
+  +--> ?PR?LCD_CLEAR?MAIN
+  +--> ?CO?MAIN
+  +--> ?PR?_LCD_SHOW_STR?MAIN
+
+?PR?GAME_PAUSE_KEY_HANDLE?MAIN          -----    -----
+  +--> ?PR?DRAW_MENU?MAIN
+
+?PR?GAME_OVER_KEY_HANDLE?MAIN           -----    -----
+  +--> ?PR?DRAW_MENU?MAIN
+
+?PR?HISTORY_KEY_HANDLE?MAIN             -----    -----
+  +--> ?PR?DRAW_MENU?MAIN
+
+
+
+SYMBOL TABLE OF MODULE:  MAIN (MAIN)
+
+  VALUE           TYPE          NAME
+  ----------------------------------
+
+  -------         MODULE        ?C?COPY
+  C:07AFH         PUBLIC        ?C?COPY
+  -------         ENDMOD        ?C?COPY
+
+  -------         MODULE        ?C?CLDPTR
+  C:07D5H         PUBLIC        ?C?CLDPTR
+  -------         ENDMOD        ?C?CLDPTR
+
+  -------         MODULE        ?C?IMUL
+  C:07EEH         PUBLIC        ?C?IMUL
+  -------         ENDMOD        ?C?IMUL
+
+  -------         MODULE        ?C?UIDIV
+  C:0800H         PUBLIC        ?C?UIDIV
+  -------         ENDMOD        ?C?UIDIV
+
+  -------         MODULE        ?C?LMUL
+  C:0855H         PUBLIC        ?C?LMUL
+  -------         ENDMOD        ?C?LMUL
+
+  -------         MODULE        ?C?CCASE
+  C:08A4H         PUBLIC        ?C?CCASE
+  -------         ENDMOD        ?C?CCASE
+
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+BL51 BANKED LINKER/LOCATER V6.22                                                      04/16/2026  11:30:33  PAGE 6
+
+
+    SEGMENT: ?PR?_LCD_SHOW_STR?MAIN
+    CALLER1: ?PR?TIMER0_ISR?MAIN
+    CALLER2: ?C_C51STARTUP
+
+*** WARNING L15: MULTIPLE CALL TO SEGMENT
+    SEGMENT: ?PR?_LCD_SHOW_CHAR?MAIN
+    CALLER1: ?PR?TIMER0_ISR?MAIN
+    CALLER2: ?C_C51STARTUP
+
+Program Size: data=53.0 xdata=198 code=6598
+LINK/LOCATE RUN COMPLETE.  2 WARNING(S),  0 ERROR(S)

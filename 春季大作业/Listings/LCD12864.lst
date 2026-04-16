@@ -1,0 +1,235 @@
+C51 COMPILER V9.54   LCD12864                                                              04/16/2026 21:06:42 PAGE 1   
+
+
+C51 COMPILER V9.54, COMPILATION OF MODULE LCD12864
+OBJECT MODULE PLACED IN .\Objects\LCD12864.obj
+COMPILER INVOKED BY: D:\keil\C51\BIN\C51.EXE LCD12864.c OPTIMIZE(8,SPEED) BROWSE DEBUG OBJECTEXTEND PRINT(.\Listings\LCD
+                    -12864.lst) TABS(2) OBJECT(.\Objects\LCD12864.obj)
+
+line level    source
+
+   1          #include "config.h"
+   2          #include "lcd12864.h"
+   3          #include "font.h"
+   4          
+   5          // ?????
+   6          static u8 LCD_Busy(void) {
+   7   1          // 在Proteus仿真中，忙信号检测可能不可靠，使用延时替代
+   8   1          return 0;
+   9   1      }
+  10          
+  11          // ????
+  12          static void LCD_WaitFree(void) {
+  13   1          // 添加简单的延时
+  14   1          u8 i;
+  15   1          for(i = 0; i < 10; i++) {
+  16   2              _nop_();
+  17   2          }
+  18   1      }
+  19          
+  20          void LCD_WriteCmd(u8 cmd) {
+  21   1          LCD_WaitFree();
+  22   1          LCD_RS = 0;
+  23   1          LCD_RW = 0;
+  24   1          LCD_E  = 1;
+  25   1          LCD_DATA = cmd;
+  26   1          _nop_(); _nop_();
+  27   1          LCD_E  = 0;
+  28   1      }
+  29          
+  30          void LCD_WriteData(u8 dat) {
+  31   1          LCD_WaitFree();
+  32   1          LCD_RS = 1;
+  33   1          LCD_RW = 0;
+  34   1          LCD_E  = 1;
+  35   1          LCD_DATA = dat;
+  36   1          _nop_(); _nop_();
+  37   1          LCD_E  = 0;
+  38   1      }
+  39          
+  40          void LCD_SetPage(u8 page) {
+  41   1          LCD_WriteCmd(PAGE_ADD | (page & 0x07));
+  42   1      }
+  43          
+  44          void LCD_SetCol(u8 col) {
+  45   1          LCD_WriteCmd(COL_ADD | (col & 0x3F));
+  46   1      }
+  47          
+  48          void LCD_SelectScreen(u8 screen) {
+  49   1          switch(screen) {
+  50   2              case 1: LCD_CS1 = 0; LCD_CS2 = 1; break;
+  51   2              case 2: LCD_CS1 = 1; LCD_CS2 = 0; break;
+  52   2              case 3: LCD_CS1 = 0; LCD_CS2 = 0; break;
+  53   2              default: LCD_CS1 = 1; LCD_CS2 = 1; break;
+  54   2          }
+C51 COMPILER V9.54   LCD12864                                                              04/16/2026 21:06:42 PAGE 2   
+
+  55   1      }
+  56          
+  57          void LCD_Init(void) {
+  58   1          LCD_CS1 = 1; LCD_CS2 = 1;
+  59   1          LCD_E = 0;
+  60   1          LCD_RS = 0; LCD_RW = 0;  // 设置为命令模式
+  61   1          LCD_WriteCmd(LCD_OFF);
+  62   1          LCD_WriteCmd(START_LINE);
+  63   1          LCD_WriteCmd(LCD_ON);
+  64   1          LCD_Clear();
+  65   1      }
+  66          
+  67          void LCD_Clear(void) {
+  68   1          u8 i, j;
+  69   1          for(i = 0; i < 8; i++) {
+  70   2              LCD_SelectScreen(1);
+  71   2              LCD_SetPage(i);
+  72   2              LCD_SetCol(0);
+  73   2              for(j = 0; j < 64; j++) LCD_WriteData(0x00);
+  74   2              
+  75   2              LCD_SelectScreen(2);
+  76   2              LCD_SetPage(i);
+  77   2              LCD_SetCol(0);
+  78   2              for(j = 0; j < 64; j++) LCD_WriteData(0x00);
+  79   2          }
+  80   1          LCD_SelectScreen(3);
+  81   1      }
+  82          
+  83          // ????(????????,???????????)
+  84          
+  85          // ????16x16????
+  86          void LCD_DrawBitmap16x16(u8 x, u8 y, u8 *bitmap) {
+  87   1          u8 page, col, i, pixelX, dat;
+  88   1          u8 startPage, endPage;
+  89   1          
+  90   1          startPage = y / 8;
+  91   1          endPage = (y + 15) / 8;  // 16??
+  92   1          
+  93   1          for(page = startPage; page <= endPage && page < 8; page++) {
+  94   2              for(col = 0; col < 16; col++) {
+  95   3                  pixelX = x + col;
+  96   3                  if(pixelX >= 128) continue;
+  97   3                  
+  98   3                  if(pixelX < 64) LCD_SelectScreen(1);
+  99   3                  else LCD_SelectScreen(2);
+ 100   3                  
+ 101   3                  LCD_SetPage(page);
+ 102   3                  LCD_SetCol(pixelX % 64);
+ 103   3                  
+ 104   3                  dat = 0;
+ 105   3                  for(i = 0; i < 8; i++) {
+ 106   4                      u8 pixelY, byteIdx, bitIdx;
+ 107   4                      pixelY = page * 8 + i;
+ 108   4                      if(pixelY >= y && pixelY < y + 16) {
+ 109   5                          byteIdx = (pixelY - y) * 2 + col / 8;
+ 110   5                          bitIdx = 7 - (col % 8);
+ 111   5                          if(bitmap[byteIdx] & (1 << bitIdx))
+ 112   5                              dat |= (1 << i);
+ 113   5                      }
+ 114   4                  }
+ 115   3                  LCD_WriteData(dat);
+ 116   3              }
+C51 COMPILER V9.54   LCD12864                                                              04/16/2026 21:06:42 PAGE 3   
+
+ 117   2          }
+ 118   1          LCD_SelectScreen(3);
+ 119   1      }
+ 120          
+ 121          // ????(????????,???????????)
+ 122          void LCD_DrawBitmap(u8 x, u8 y, u8 w, u8 h, u8 *bitmap) {
+ 123   1          u8 page, col, i, pixelX, dat;
+ 124   1          u8 startPage, endPage, bytePerRow;
+ 125   1          
+ 126   1          bytePerRow = (w + 7) / 8;
+ 127   1          startPage = y / 8;
+ 128   1          endPage = (y + h - 1) / 8;
+ 129   1          
+ 130   1          for(page = startPage; page <= endPage && page < 8; page++) {
+ 131   2              for(col = 0; col < w; col++) {
+ 132   3                  pixelX = x + col;
+ 133   3                  if(pixelX >= 128) continue;
+ 134   3                  
+ 135   3                  if(pixelX < 64) LCD_SelectScreen(1);
+ 136   3                  else LCD_SelectScreen(2);
+ 137   3                  
+ 138   3                  LCD_SetPage(page);
+ 139   3                  LCD_SetCol(pixelX % 64);
+ 140   3                  
+ 141   3                  dat = 0;
+ 142   3                  for(i = 0; i < 8; i++) {
+ 143   4                      u8 pixelY, byteIdx, bitIdx;
+ 144   4                      pixelY = page * 8 + i;
+ 145   4                      if(pixelY >= y && pixelY < y + h) {
+ 146   5                          byteIdx = (pixelY - y) * bytePerRow + col / 8;
+ 147   5                          bitIdx = 7 - (col % 8);
+ 148   5                          if(bitmap[byteIdx] & (1 << bitIdx))
+ 149   5                              dat |= (1 << i);
+ 150   5                      }
+ 151   4                  }
+ 152   3                  LCD_WriteData(dat);
+ 153   3              }
+ 154   2          }
+ 155   1          LCD_SelectScreen(3);
+ 156   1      }
+ 157          
+ 158          // ????
+ 159          void LCD_DrawFillRect(u8 x, u8 y, u8 w, u8 h, u8 pattern) {
+ 160   1          u8 page, col, pixelX, dat;
+ 161   1          u8 startPage, endPage;
+ 162   1          
+ 163   1          startPage = y / 8;
+ 164   1          endPage = (y + h - 1) / 8;
+ 165   1          
+ 166   1          for(page = startPage; page <= endPage && page < 8; page++) {
+ 167   2              for(col = 0; col < w; col++) {
+ 168   3                  pixelX = x + col;
+ 169   3                  if(pixelX >= 128) continue;
+ 170   3                  
+ 171   3                  if(pixelX < 64) LCD_SelectScreen(1);
+ 172   3                  else LCD_SelectScreen(2);
+ 173   3                  
+ 174   3                  LCD_SetPage(page);
+ 175   3                  LCD_SetCol(pixelX % 64);
+ 176   3                  
+ 177   3                  dat = pattern;
+ 178   3                  if(page == startPage && (y % 8) != 0) {
+C51 COMPILER V9.54   LCD12864                                                              04/16/2026 21:06:42 PAGE 4   
+
+ 179   4                      dat = pattern << (y % 8);
+ 180   4                  } else if(page == endPage && ((y + h) % 8) != 0) {
+ 181   4                      dat = pattern >> (8 - ((y + h) % 8));
+ 182   4                  }
+ 183   3                  LCD_WriteData(dat);
+ 184   3              }
+ 185   2          }
+ 186   1          LCD_SelectScreen(3);
+ 187   1      }
+ 188          
+ 189          // ????
+ 190          void LCD_DisplayNum(u8 x, u8 y, u16 num, u8 len) {
+ 191   1          // ???(???????)
+ 192   1      }
+*** WARNING C280 IN LINE 190 OF LCD12864.c: 'x': unreferenced local variable
+*** WARNING C280 IN LINE 190 OF LCD12864.c: 'y': unreferenced local variable
+*** WARNING C280 IN LINE 190 OF LCD12864.c: 'num': unreferenced local variable
+*** WARNING C280 IN LINE 190 OF LCD12864.c: 'len': unreferenced local variable
+ 193          
+ 194          // ?????
+ 195          void LCD_DisplayString(u8 x, u8 y, u8 *str) {
+ 196   1          while(*str) {
+ 197   2              LCD_DrawBitmap(x, y, 8, 8, ascii_8x8[*str - 0x20]);
+ 198   2              x += 8;
+ 199   2              str++;
+ 200   2          }
+ 201   1      }
+
+
+MODULE INFORMATION:   STATIC OVERLAYABLE
+   CODE SIZE        =    985    ----
+   CONSTANT SIZE    =   ----    ----
+   XDATA SIZE       =   ----    ----
+   PDATA SIZE       =   ----    ----
+   DATA SIZE        =   ----      45
+   IDATA SIZE       =   ----    ----
+   BIT SIZE         =   ----    ----
+END OF MODULE INFORMATION.
+
+
+C51 COMPILATION COMPLETE.  4 WARNING(S),  0 ERROR(S)
